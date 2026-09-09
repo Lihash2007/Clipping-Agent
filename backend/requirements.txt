@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+ffmpeg-python
+moviepy
+openai-whisper
+numpy<2.0
+scipy<1.13
+opencv-python==4.8.0.76
+transformers
+decord
+sentence-transformers
+mediapipe==0.10.14
