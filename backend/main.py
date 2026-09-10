@@ -6,6 +6,8 @@ import ffmpeg
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from typing import Optional
 from ml_pipeline import process_video_pipeline, analyze_video_for_clips
 
 # Setup a proper ffmpeg.exe in the PATH
@@ -45,7 +47,7 @@ def read_root():
 async def analyze_video(
     file: UploadFile = File(...),
     target_duration: float = Form(30.0),
-    search_query: str = Form(None),
+    search_query: Optional[str] = Form(None),
     content_type: str = Form("podcast")
 ):
     """Analyzes a video, generating transcripts and finding multiple clips."""

@@ -617,8 +617,8 @@ def process_video_pipeline(input_path, output_path, start_time, end_time, aspect
         cropped_clip = clip.transform(tracker.process_frame)
     
     temp_cropped_path = input_path.replace(".mp4", "_cropped_temp.mp4")
-    # Write cropped video, suppressing moviepy logs
-    cropped_clip.write_videofile(temp_cropped_path, codec="libx264", audio_codec="aac", fps=clip.fps, logger=None)
+    # Write cropped video with high bitrate for quality
+    cropped_clip.write_videofile(temp_cropped_path, codec="libx264", audio_codec="aac", fps=clip.fps, bitrate="15000k", preset="fast", logger=None)
     clip.close()
     
     # 2. Add Dynamic Bouncy Subtitles via FFmpeg
@@ -661,7 +661,8 @@ def process_video_pipeline(input_path, output_path, start_time, end_time, aspect
         video_stream = video_stream.filter('ass', ass_path_rel)
         
     print(f"Running ffmpeg to output {output_path}...")
-    out = ffmpeg.output(video_stream, audio_stream, output_path, vcodec='libx264', acodec='copy')
+    # Use crf=18 for high visual quality
+    out = ffmpeg.output(video_stream, audio_stream, output_path, vcodec='libx264', acodec='copy', crf=18, preset='fast')
     out.run(overwrite_output=True, capture_stderr=True, capture_stdout=True)
     
     if os.path.exists(temp_cropped_path):

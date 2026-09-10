@@ -89,7 +89,8 @@ export default function Home() {
         setOriginalVideoUrl(`http://localhost:8000${data.video_url}`);
         setAnalyzeState("done");
       } else {
-        alert("Analysis failed: " + data.message);
+        const errorMsg = data.message || (data.detail ? JSON.stringify(data.detail) : "Unknown error");
+        alert("Analysis failed: " + errorMsg);
         setAnalyzeState("idle");
       }
     } catch (error) {
@@ -123,9 +124,10 @@ export default function Home() {
       const data = await response.json();
       
       if (data.status === "success") {
-        setDownloadUrls(prev => ({...prev, [clipId]: `http://localhost:8000${data.output_url}`}));
+        setDownloadUrls(prev => ({ ...prev, [clipId]: `http://localhost:8000${data.output_url}` }));
       } else {
-        alert("Rendering failed: " + data.message);
+        const errorMsg = data.message || (data.detail ? JSON.stringify(data.detail) : "Unknown error");
+        alert("Render failed: " + errorMsg);
       }
     } catch (error) {
       console.error(error);
