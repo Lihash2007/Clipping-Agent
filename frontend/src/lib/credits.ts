@@ -51,7 +51,7 @@ const PLAN_CONFIGS: Record<
   },
   pro: {
     name: "Annual Pro Pass",
-    price: "$105.00 / yr",
+    price: "$88.00 / yr",
     dailyLimit: 9999,
     monthlyLimit: 99999,
     maxResolution: "4K",

@@ -14,8 +14,8 @@
     },
     "pro": {
       "name": "Annual Pro Pass",
-      "price_usd": 105.0,
-      "price_inr": 4799,
+      "price_usd": 88.0,
+      "price_inr": 3999,
       "daily_limit": 9999
     },
     "lifetime": {

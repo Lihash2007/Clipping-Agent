@@ -99,8 +99,8 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
   );
 
   const proCalc = calculateLocalizedPrice(
-    proCfg?.price_usd ?? 105.0,
-    proCfg?.price_inr ?? 4799,
+    proCfg?.price_usd ?? 88.0,
+    proCfg?.price_inr ?? 3999,
     currency,
     billingCycle,
     discPercent
@@ -291,7 +291,7 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
               >
                 <span>Yearly</span>
                 <span className="px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
-                  -20%
+                  -33%
                 </span>
               </button>
             </div>

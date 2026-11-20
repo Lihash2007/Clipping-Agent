@@ -182,10 +182,10 @@ export function calculateLocalizedPrice(
     rawPrice = parseFloat((baseUsd * rate).toFixed(2));
   }
 
-  // Yearly discount (-20%)
+  // Yearly discount (-33%)
   let finalPrice = rawPrice;
   if (billingCycle === "yearly" && finalPrice > 0) {
-    finalPrice = currency === "INR" ? Math.round(finalPrice * 0.8) : parseFloat((finalPrice * 0.8).toFixed(2));
+    finalPrice = currency === "INR" ? Math.round(finalPrice * 0.67) : parseFloat((finalPrice * 0.67).toFixed(2));
   }
 
   // Original before promo

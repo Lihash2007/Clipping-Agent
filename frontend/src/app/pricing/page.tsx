@@ -87,8 +87,8 @@ export default function PricingPage() {
   );
 
   const proCalc = calculateLocalizedPrice(
-    proCfg?.price_usd ?? 105.0,
-    proCfg?.price_inr ?? 4799,
+    proCfg?.price_usd ?? 88.0,
+    proCfg?.price_inr ?? 3999,
     currency,
     billingCycle,
     discPercent
@@ -258,7 +258,7 @@ export default function PricingPage() {
               >
                 <span>Yearly</span>
                 <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
-                  Save 20%
+                  Save 33%
                 </span>
               </button>
             </div>
