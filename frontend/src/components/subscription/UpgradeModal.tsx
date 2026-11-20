@@ -91,16 +91,16 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
   const discPercent = appliedPromo?.discountPercent ?? 0;
 
   const creatorCalc = calculateLocalizedPrice(
-    creatorCfg?.price_usd ?? 9.99,
-    creatorCfg?.price_inr ?? 799,
+    creatorCfg?.price_usd ?? 15.0,
+    creatorCfg?.price_inr ?? 699,
     currency,
     billingCycle,
     discPercent
   );
 
   const proCalc = calculateLocalizedPrice(
-    proCfg?.price_usd ?? 19.99,
-    proCfg?.price_inr ?? 1499,
+    proCfg?.price_usd ?? 120.0,
+    proCfg?.price_inr ?? 5499,
     currency,
     billingCycle,
     discPercent

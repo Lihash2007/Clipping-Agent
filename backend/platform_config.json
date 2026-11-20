@@ -7,15 +7,21 @@
       "daily_limit": 3
     },
     "creator": {
-      "name": "Creator Pass",
-      "price_usd": 9.99,
-      "price_inr": 299,
-      "daily_limit": 25
+      "name": "Monthly Pro Pass",
+      "price_usd": 15.0,
+      "price_inr": 699,
+      "daily_limit": 9999
     },
     "pro": {
-      "name": "Pro Streamer Unlimited",
-      "price_usd": 19.99,
-      "price_inr": 999,
+      "name": "Annual Pro Pass",
+      "price_usd": 120.0,
+      "price_inr": 5499,
+      "daily_limit": 9999
+    },
+    "lifetime": {
+      "name": "Lifetime Founder Pass",
+      "price_usd": 199.0,
+      "price_inr": 8999,
       "daily_limit": 9999
     },
     "topup_50": {
