@@ -27,3 +27,7 @@ backend/uploads/*
 backend/output/*
 !backend/output/.gitkeep
 backend/custom_model/weights/*.pth
+backend/license_state.json
+dist/
+build/
+*.spec

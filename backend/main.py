@@ -1624,6 +1624,40 @@ async def list_license_keys(authorized: None = Depends(verify_master_key)):
         "licenses": licenses
     }
 
+# =========================================================================
+# DESKTOP STANDALONE HARDWARE NODE-LOCKING & EXPIRY LICENSING
+# =========================================================================
+try:
+    from licensing import get_license_status, activate_license, get_hardware_fingerprint, load_license_state, save_license_state
+except ImportError:
+    from backend.licensing import get_license_status, activate_license, get_hardware_fingerprint, load_license_state, save_license_state
+
+class DesktopActivateRequest(BaseModel):
+    license_key: str
+
+@app.get("/api/desktop/license/status")
+async def get_desktop_license_status():
+    """Returns the current machine ID and hardware-locked license activation status."""
+    return get_license_status()
+
+@app.post("/api/desktop/license/activate")
+async def activate_desktop_license(req: DesktopActivateRequest):
+    """Binds and activates a Gumroad license key or Founder key to this unique hardware device."""
+    res = activate_license(req.license_key)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("message", "License activation failed."))
+    return res
+
+@app.post("/api/desktop/license/deactivate")
+async def deactivate_desktop_license(authorized: None = Depends(verify_master_key)):
+    """Allows master admin or user to unbind license from this device."""
+    state = load_license_state()
+    state["is_active"] = False
+    state["license_key"] = None
+    save_license_state(state)
+    return {"status": "success", "message": "License deactivated from this device."}
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))

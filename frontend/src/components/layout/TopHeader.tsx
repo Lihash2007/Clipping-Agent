@@ -23,9 +23,12 @@ import {
   Tag,
   LogOut,
   User,
-  Ticket
+  Ticket,
+  ShieldCheck,
+  ShieldAlert
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { DesktopLicenseModal } from "@/components/licensing/DesktopLicenseModal";
 import { getActiveJob, ActiveJobState } from "@/lib/activeJob";
 import {
   getNotifications,
@@ -85,8 +88,29 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup" | "redeem">("signin");
 
+  // Desktop Standalone Hardware Licensing State
+  const [desktopLicense, setDesktopLicense] = useState<{
+    is_licensed: boolean;
+    plan?: string;
+    machine_id?: string;
+    days_remaining?: number | string;
+  } | null>(null);
+  const [showDesktopLicenseModal, setShowDesktopLicenseModal] = useState(false);
+
   const notifRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  const refreshDesktopLicense = async () => {
+    try {
+      const res = await fetch("/api/desktop/license/status");
+      if (res.ok) {
+        const data = await res.json();
+        setDesktopLicense(data);
+      }
+    } catch {
+      // Offline or local dev fallback
+    }
+  };
 
   const refreshCredits = () => {
     setCredits(getUserCredits());
@@ -107,6 +131,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
     setActiveJob(getActiveJob());
     refreshNotifications();
     refreshCredits();
+    refreshDesktopLicense();
 
     fetchPublicPlatformConfig().then((cfg) => {
       if (cfg && cfg.announcement) {
@@ -280,6 +305,33 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
           <Tag className="w-3.5 h-3.5 text-purple-400" />
           <span>Plans</span>
         </Link>
+
+        {/* Desktop Hardware Node-Lock License Pill */}
+        <button
+          type="button"
+          onClick={() => setShowDesktopLicenseModal(true)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs border ${
+            desktopLicense?.is_licensed
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              : "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 animate-pulse"
+          }`}
+          title="Desktop Node-Locked Hardware License Status"
+        >
+          {desktopLicense?.is_licensed ? (
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          ) : (
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+          )}
+          <span className="font-mono text-[11px]">
+            {desktopLicense?.is_licensed
+              ? desktopLicense.plan === "LIFETIME_FOUNDER"
+                ? "FOUNDER"
+                : desktopLicense.days_remaining !== undefined && desktopLicense.days_remaining !== "Unlimited"
+                ? `${desktopLicense.plan || "PRO"} (${desktopLicense.days_remaining}d)`
+                : "PRO PC"
+              : "Activate PC"}
+          </span>
+        </button>
 
         {/* Daily Free Generation Credits Counter */}
         <button
@@ -707,6 +759,15 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         initialMode={authModalMode}
+      />
+    )}
+
+    {/* Desktop Hardware License Modal */}
+    {showDesktopLicenseModal && (
+      <DesktopLicenseModal
+        isOpen={showDesktopLicenseModal}
+        onClose={() => setShowDesktopLicenseModal(false)}
+        onStatusChange={(st) => setDesktopLicense(st)}
       />
     )}
   </>
