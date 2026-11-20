@@ -137,36 +137,49 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
   };
 
   const handleSelectTier = (tier: PlanTier) => {
-    if (tier === currentTier) return;
-    setIsProcessing(true);
-    setTimeout(() => {
-      upgradePlanTier(tier);
-      setIsProcessing(false);
+    if (tier === "free") {
+      upgradePlanTier("free");
       addNotification({
         type: "system",
-        title: `Plan Upgraded to ${PLAN_CONFIGS[tier].name}!`,
-        message: `Your account now has ${PLAN_CONFIGS[tier].dailyLimit === 9999 ? "unlimited" : PLAN_CONFIGS[tier].dailyLimit} video generations per day.`,
-        actionUrl: "/settings",
-        actionLabel: "View Subscription",
+        title: "Active Free Starter Plan",
+        message: "Switched to Free Starter (3 video generations per day).",
       });
       onClose();
-    }, 500);
+      return;
+    }
+
+    // SECURE GUMROAD CHECKOUT REDIRECT - NO UNAUTHORIZED LOCAL UPGRADES
+    const gumroadUrl = "https://gumroad.com/l/picclip";
+    if (typeof window !== "undefined") {
+      window.open(gumroadUrl, "_blank", "noopener,noreferrer");
+      addNotification({
+        type: "system",
+        title: "Opened Gumroad Checkout in Browser",
+        message: "Complete your checkout on Gumroad, then paste your License Key to activate this PC.",
+      });
+      onClose();
+      // Prompt user to enter their Gumroad key immediately
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+      }, 200);
+    }
   };
 
   const handleBuyPack = (amount: number) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      addTopUpCredits(amount);
-      setIsProcessing(false);
+    // SECURE GUMROAD CHECKOUT REDIRECT
+    const gumroadUrl = "https://gumroad.com/l/picclip";
+    if (typeof window !== "undefined") {
+      window.open(gumroadUrl, "_blank", "noopener,noreferrer");
       addNotification({
         type: "system",
-        title: `Added +${amount} Top-up Credits!`,
-        message: `Your account received +${amount} instant generations that never expire.`,
-        actionUrl: "/editor",
-        actionLabel: "Create Clip",
+        title: "Opened Gumroad Checkout in Browser",
+        message: `Complete your +${amount} clip pack purchase on Gumroad, then paste your License Key to activate.`,
       });
       onClose();
-    }, 500);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+      }, 200);
+    }
   };
 
   return (

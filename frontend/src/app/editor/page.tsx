@@ -861,6 +861,9 @@ function SingleWindowStudioContent() {
       });
 
       if (!res.ok) {
+        if (res.status === 403) {
+          window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+        }
         const err = await res.json().catch(() => ({ detail: "Render request failed" }));
         throw new Error(safeErrorText(err));
       }

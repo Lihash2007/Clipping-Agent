@@ -21,6 +21,26 @@ from pydantic import BaseModel
 
 from ml_pipeline import process_video_pipeline, analyze_video_for_clips, MasterCompositor
 from stream_downloader import ingest_stream_or_url, detect_platform, check_stream_connectivity
+try:
+    from licensing import (
+        get_license_status,
+        activate_license,
+        get_hardware_fingerprint,
+        load_license_state,
+        save_license_state,
+        get_daily_quota_info,
+        check_and_consume_quota
+    )
+except ImportError:
+    from backend.licensing import (
+        get_license_status,
+        activate_license,
+        get_hardware_fingerprint,
+        load_license_state,
+        save_license_state,
+        get_daily_quota_info,
+        check_and_consume_quota
+    )
 
 # ==========================================
 # 1. Environment & FFmpeg Setup
@@ -548,6 +568,11 @@ async def analyze_video(
     Returns job_id immediately so frontend can stream progress without blocking.
     If sync=true is passed, awaits completion before returning.
     """
+    # Server-Side Anti-Piracy Quota Enforcement
+    allowed, reason, quota_info = check_and_consume_quota()
+    if not allowed:
+        raise HTTPException(status_code=403, detail=reason)
+
     file_id = str(uuid.uuid4())
     input_path = os.path.join(UPLOAD_DIR, f"{file_id}.mp4")
 
@@ -635,6 +660,11 @@ async def ingest_live_or_url(
     Ingests live stream (YouTube, Twitch, Kick), VOD section, or clip,
     and runs the full AI clipping pipeline on it.
     """
+    # Server-Side Anti-Piracy Quota Enforcement
+    allowed, reason, quota_info = check_and_consume_quota()
+    if not allowed:
+        raise HTTPException(status_code=403, detail=reason)
+
     file_id = str(uuid.uuid4())
     output_path = os.path.join(UPLOAD_DIR, f"{file_id}.mp4")
 
@@ -708,6 +738,15 @@ async def process_video(
     """
     Renders clip in background with high visual fidelity, Brand Kit and Safe-Zone compliant graphics.
     """
+    lic_status = get_license_status()
+    if not lic_status.get("is_licensed"):
+        quota = get_daily_quota_info()
+        if not quota.get("can_generate") and quota.get("daily_remaining", 0) <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Daily free generation limit reached ({quota.get('daily_limit', 3)}/{quota.get('daily_limit', 3)} clips today). Please activate your Gumroad license key to export more clips."
+            )
+
     input_path = os.path.join(UPLOAD_DIR, f"{file_id}.mp4")
     if not os.path.exists(input_path):
         raise HTTPException(status_code=404, detail="Source video not found")
@@ -1642,8 +1681,13 @@ class DesktopActivateRequest(BaseModel):
 
 @app.get("/api/desktop/license/status")
 async def get_desktop_license_status():
-    """Returns the current machine ID and hardware-locked license activation status."""
+    """Returns the current machine ID, hardware-locked license activation status, and daily quota."""
     return get_license_status()
+
+@app.get("/api/desktop/quota")
+async def get_desktop_quota():
+    """Returns real-time server-enforced daily free generation quota."""
+    return get_daily_quota_info()
 
 @app.post("/api/desktop/license/activate")
 async def activate_desktop_license(req: DesktopActivateRequest):

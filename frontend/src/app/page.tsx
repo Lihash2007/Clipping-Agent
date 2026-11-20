@@ -263,12 +263,11 @@ function DashboardContent() {
     // Check Daily Quota (Free tier: 3 clips / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
-      setUpgradeReason(check.reason);
-      setShowUpgradeModal(true);
+      window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
       addToast({
         type: "error",
         title: "Daily Free Limit Reached",
-        message: check.reason || "Daily free generation limit reached (3/3). Upgrade to unlock unlimited clips.",
+        message: check.reason || "Daily free generation limit reached (3/3). Please enter your Gumroad license key to unlock unlimited clips.",
       });
       return;
     }
@@ -301,6 +300,9 @@ function DashboardContent() {
       });
 
       if (!res.ok) {
+        if (res.status === 403) {
+          window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+        }
         const err = await res.json().catch(() => ({ detail: "Analysis failed to start" }));
         throw new Error(safeErrorText(err));
       }
@@ -337,12 +339,11 @@ function DashboardContent() {
     // Check Daily Quota (Free tier: 3 clips / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
-      setUpgradeReason(check.reason);
-      setShowUpgradeModal(true);
+      window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
       addToast({
         type: "error",
         title: "Daily Free Limit Reached",
-        message: check.reason || "Daily free generation limit reached (3/3). Upgrade to unlock unlimited clips.",
+        message: check.reason || "Daily free generation limit reached (3/3). Please enter your Gumroad license key to unlock unlimited clips.",
       });
       return;
     }
@@ -377,6 +378,9 @@ function DashboardContent() {
       });
 
       if (!res.ok) {
+        if (res.status === 403) {
+          window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+        }
         const err = await res.json().catch(() => ({ detail: "Stream ingest failed to start" }));
         throw new Error(safeErrorText(err));
       }

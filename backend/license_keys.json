@@ -5,10 +5,9 @@
     "credits_bonus": 50,
     "source": "gumroad",
     "description": "Gumroad Creator Pass Voucher (1-Month + 50 Bonus Credits)",
-    "redeemed": true,
-    "redeemed_by": "creator@streamer.in",
-    "created_at": 1732117000,
-    "redeemed_at": 1795188051
+    "redeemed": false,
+    "redeemed_by": null,
+    "created_at": 1732117000
   },
   {
     "code": "GUMROAD-PRO-VIP",
@@ -16,10 +15,9 @@
     "credits_bonus": 100,
     "source": "gumroad",
     "description": "Gumroad Pro Streamer Unlimited Pass",
-    "redeemed": true,
-    "redeemed_by": "PIC-070E-F616-97FD-EC87",
-    "created_at": 1732117000,
-    "redeemed_at": 1795197009
+    "redeemed": false,
+    "redeemed_by": null,
+    "created_at": 1732117000
   },
   {
     "code": "GUMROAD-PACK-50",

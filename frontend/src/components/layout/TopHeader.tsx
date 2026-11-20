@@ -42,7 +42,7 @@ import {
   saveNotificationSettings,
   AppNotification
 } from "@/lib/notifications";
-import { getUserCredits, getRemainingDailyGenerations, UserCreditState } from "@/lib/credits";
+import { getUserCredits, getRemainingDailyGenerations, UserCreditState, upgradePlanTier } from "@/lib/credits";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { fetchPublicPlatformConfig } from "@/lib/platformConfig";
 import { getCurrentUser, logoutUser, UserAccount } from "@/lib/auth";
@@ -106,6 +106,27 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
       if (res.ok) {
         const data = await res.json();
         setDesktopLicense(data);
+
+        // Sync frontend credit tier with hardware license status
+        if (data.is_licensed) {
+          const c = getUserCredits();
+          if (c.tier !== "pro") {
+            upgradePlanTier("pro");
+          }
+        } else {
+          // If not licensed, enforce free tier
+          const c = getUserCredits();
+          if (c.tier === "pro") {
+            upgradePlanTier("free");
+          }
+
+          // Automatic First-Launch Startup Prompt
+          const prompted = sessionStorage.getItem("picclip_license_startup_prompted");
+          if (!prompted) {
+            sessionStorage.setItem("picclip_license_startup_prompted", "true");
+            setShowDesktopLicenseModal(true);
+          }
+        }
       }
     } catch {
       // Offline or local dev fallback

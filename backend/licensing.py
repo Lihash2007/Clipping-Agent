@@ -94,26 +94,43 @@ def get_hardware_fingerprint() -> str:
 
 def load_license_state() -> Dict[str, Any]:
     """Loads the locally cached license activation state."""
+    today_str = time.strftime("%Y-%m-%d")
     if not os.path.exists(LICENSE_STATE_FILE):
         return {
             "is_active": False,
             "license_key": None,
             "machine_id": get_hardware_fingerprint(),
-            "plan_type": "FREE_TRIAL",
+            "plan_type": "FREE_STARTER",
             "activated_at": None,
             "expires_at": None,
             "last_verified_at": None,
             "last_monotonic_time": int(time.time()),
             "customer_email": None,
+            "daily_free_used": 0,
+            "daily_free_date": today_str,
+            "daily_free_limit": 3,
             "signature": None
         }
 
     try:
         with open(LICENSE_STATE_FILE, "r", encoding="utf-8") as f:
             state = json.load(f)
+            if "daily_free_used" not in state:
+                state["daily_free_used"] = 0
+            if "daily_free_date" not in state:
+                state["daily_free_date"] = today_str
+            if "daily_free_limit" not in state:
+                state["daily_free_limit"] = 3
             return state
     except Exception:
-        return {"is_active": False, "machine_id": get_hardware_fingerprint()}
+        return {
+            "is_active": False,
+            "machine_id": get_hardware_fingerprint(),
+            "plan_type": "FREE_STARTER",
+            "daily_free_used": 0,
+            "daily_free_date": today_str,
+            "daily_free_limit": 3
+        }
 
 
 def save_license_state(state: Dict[str, Any]):
@@ -125,6 +142,86 @@ def save_license_state(state: Dict[str, Any]):
 
     with open(LICENSE_STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
+
+
+def get_daily_quota_info() -> Dict[str, Any]:
+    """Returns today's daily free quota status."""
+    state = load_license_state()
+    today = time.strftime("%Y-%m-%d")
+
+    # Auto-reset if new day has arrived
+    if state.get("daily_free_date") != today:
+        state["daily_free_used"] = 0
+        state["daily_free_date"] = today
+        save_license_state(state)
+
+    is_pro = bool(state.get("is_active", False))
+    limit = state.get("daily_free_limit", 3)
+    used = state.get("daily_free_used", 0)
+    remaining = 9999 if is_pro else max(0, limit - used)
+
+    return {
+        "is_licensed": is_pro,
+        "plan": state.get("plan_type", "FREE_STARTER") if is_pro else "FREE_STARTER",
+        "daily_limit": 9999 if is_pro else limit,
+        "daily_used": used,
+        "daily_remaining": remaining,
+        "can_generate": is_pro or (used < limit),
+        "reset_date": today
+    }
+
+
+def check_and_consume_quota() -> tuple[bool, str, Dict[str, Any]]:
+    """
+    Enforces server-side anti-piracy quota:
+    - If licensed (Pro / Annual / Lifetime): Unlimited generations allowed.
+    - If unlicensed (Free Starter): Strictly enforces 3 clips per day.
+    Returns: (allowed: bool, reason: str, quota_info: Dict[str, Any])
+    """
+    state = load_license_state()
+    today = time.strftime("%Y-%m-%d")
+
+    # 1. Check if hardware device is licensed
+    if state.get("is_active"):
+        return True, "LICENSED_PRO_UNLIMITED", {
+            "is_licensed": True,
+            "plan": state.get("plan_type", "PRO"),
+            "daily_remaining": 9999,
+            "daily_limit": 9999,
+            "daily_used": 0
+        }
+
+    # 2. Check date reset for free tier
+    if state.get("daily_free_date") != today:
+        state["daily_free_used"] = 0
+        state["daily_free_date"] = today
+
+    limit = state.get("daily_free_limit", 3)
+    used = state.get("daily_free_used", 0)
+
+    # 3. Check if free quota exhausted
+    if used >= limit:
+        quota_info = {
+            "is_licensed": False,
+            "plan": "FREE_STARTER",
+            "daily_limit": limit,
+            "daily_used": used,
+            "daily_remaining": 0
+        }
+        return False, f"Daily free generation limit reached ({limit}/{limit} clips today). Please enter your Gumroad license key to unlock unlimited high-speed exports.", quota_info
+
+    # 4. Consume 1 generation
+    state["daily_free_used"] = used + 1
+    save_license_state(state)
+
+    quota_info = {
+        "is_licensed": False,
+        "plan": "FREE_STARTER",
+        "daily_limit": limit,
+        "daily_used": state["daily_free_used"],
+        "daily_remaining": max(0, limit - state["daily_free_used"])
+    }
+    return True, "FREE_QUOTA_CONSUMED", quota_info
 
 
 def verify_local_integrity(state: Dict[str, Any]) -> bool:
@@ -164,6 +261,15 @@ def verify_gumroad_license(license_key: str, permalink: str = "picclip", product
     Supports both product_permalink and modern product_id.
     """
     verify_url = "https://api.gumroad.com/v2/licenses/verify"
+    if not product_id and os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as cf:
+                cfg = json.load(cf)
+                product_id = cfg.get("gumroad_product_id")
+                permalink = cfg.get("gumroad_permalink") or permalink
+        except Exception:
+            pass
+
     post_params = {
         "product_permalink": permalink,
         "license_key": license_key.strip(),
@@ -329,6 +435,8 @@ def get_license_status() -> Dict[str, Any]:
     current_machine_id = get_hardware_fingerprint()
     state = load_license_state()
 
+    quota = get_daily_quota_info()
+
     # 1. Check if active
     if not state.get("is_active"):
         return {
@@ -337,7 +445,8 @@ def get_license_status() -> Dict[str, Any]:
             "message": "Please enter your Gumroad license key to activate PicClip Studio.",
             "machine_id": current_machine_id,
             "plan": "UNLICENSED",
-            "days_remaining": 0
+            "days_remaining": 0,
+            "quota": quota
         }
 
     # 2. Check Hardware Fingerprint Match (Anti-Sharing Lock)
@@ -349,7 +458,8 @@ def get_license_status() -> Dict[str, Any]:
             "message": f"Hardware mismatch! License was registered to {saved_machine_id}, but this device is {current_machine_id}. Sharing is not permitted.",
             "machine_id": current_machine_id,
             "plan": "LOCKED",
-            "days_remaining": 0
+            "days_remaining": 0,
+            "quota": quota
         }
 
     # 3. Check Local Cryptographic Integrity
@@ -360,7 +470,8 @@ def get_license_status() -> Dict[str, Any]:
             "message": "License state tampering detected! Re-activation required.",
             "machine_id": current_machine_id,
             "plan": "LOCKED",
-            "days_remaining": 0
+            "days_remaining": 0,
+            "quota": quota
         }
 
     # 4. Check Clock Rollback
@@ -371,7 +482,8 @@ def get_license_status() -> Dict[str, Any]:
             "message": "System clock rollback detected! Please reset your system clock to current time.",
             "machine_id": current_machine_id,
             "plan": "LOCKED",
-            "days_remaining": 0
+            "days_remaining": 0,
+            "quota": quota
         }
 
     # 5. Check Expiration (Monthly / Annual)
@@ -390,7 +502,8 @@ def get_license_status() -> Dict[str, Any]:
                 "message": f"Your {state.get('plan_type')} subscription has expired. Please renew on Gumroad.",
                 "machine_id": current_machine_id,
                 "plan": state.get("plan_type"),
-                "days_remaining": 0
+                "days_remaining": 0,
+                "quota": quota
             }
         days_remaining = max(0, int((expires_at - now) / 86400))
 
@@ -405,5 +518,6 @@ def get_license_status() -> Dict[str, Any]:
         "plan": state.get("plan_type"),
         "customer_email": state.get("customer_email"),
         "expires_at": time.strftime("%Y-%m-%d", time.localtime(expires_at)) if expires_at else "Lifetime",
-        "days_remaining": days_remaining if days_remaining is not None else "Unlimited"
+        "days_remaining": days_remaining if days_remaining is not None else "Unlimited",
+        "quota": quota
     }
