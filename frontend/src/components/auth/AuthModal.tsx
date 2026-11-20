@@ -29,9 +29,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: "signin" | "signup" | "redeem";
+  isMandatory?: boolean;
 }
 
-export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, initialMode = "signin", isMandatory = false }: AuthModalProps) {
   if (!isOpen) return null;
 
   const [mode, setMode] = useState<"signin" | "signup" | "redeem">(initialMode);
@@ -146,13 +147,15 @@ export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModal
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-3xl border border-purple-500/30 bg-[#0d0f17] text-white p-6 sm:p-8 shadow-2xl relative my-8 space-y-6">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Close Button - Hidden when login is mandatory */}
+        {!isMandatory && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Modal Header */}
         <div className="text-center space-y-1.5 pt-1">

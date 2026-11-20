@@ -24,6 +24,9 @@ import { addNotification } from "@/lib/notifications";
 import { canGenerateVideo, consumeGenerationCredit, getUserCredits } from "@/lib/credits";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { useTheme } from "@/lib/theme";
+import { getCurrentUser, UserAccount } from "@/lib/auth";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { FolderOpen } from "lucide-react";
 import {
   UploadCloud,
   Link as LinkIcon,
@@ -109,11 +112,26 @@ function DashboardContent() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
+  // Mandatory Authentication State
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
   // Ingestion Tab & Input State
   const [activeTab, setActiveTab] = useState<"upload" | "stream">("upload");
   const [contentType, setContentType] = useState<ContentType>("vlog");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dynamic AI Engine & Model Tuning Controls
+  const [targetDurationTier, setTargetDurationTier] = useState<"short" | "medium" | "long">("medium"); // 30s, 45s, 60s
+  const [aiSensitivity, setAiSensitivity] = useState<"balanced" | "aggressive_viral" | "deep_dialogue">("balanced");
+  const [autoFaceTracking, setAutoFaceTracking] = useState<boolean>(true);
+  const [systemInfo, setSystemInfo] = useState<{
+    hardware_mode: string;
+    cuda_available: boolean;
+    device_name: string;
+    cpu_threads: number;
+  } | null>(null);
 
   // Stream URL State
   const [streamUrl, setStreamUrl] = useState("");
@@ -158,8 +176,24 @@ function DashboardContent() {
     setToasts((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Load Projects and Restore Active Job on Mount
+  // Load Projects, Auth and Hardware Acceleration Status on Mount
   useEffect(() => {
+    setCurrentUser(getCurrentUser());
+    setAuthChecked(true);
+
+    const handleAuthChange = (e: any) => {
+      setCurrentUser(e.detail || getCurrentUser());
+    };
+    window.addEventListener("pic_clip_auth_changed", handleAuthChange);
+
+    // Fetch local hardware acceleration info
+    fetch("/api/desktop/system-info")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((info) => {
+        if (info) setSystemInfo(info);
+      })
+      .catch(() => {});
+
     loadRecentProjects();
 
     const active = getActiveJob();
@@ -172,7 +206,26 @@ function DashboardContent() {
       setActiveJobTitle(active.title || "Stream Ingest & Analysis");
       pollJobStatus(jId);
     }
+
+    return () => {
+      window.removeEventListener("pic_clip_auth_changed", handleAuthChange);
+    };
   }, []);
+
+  const handleOpenOutputFolder = async () => {
+    try {
+      const res = await fetch("/api/desktop/open-output", { method: "POST" });
+      if (res.ok) {
+        addToast({
+          type: "success",
+          title: "Opened Output Folder",
+          message: "Rendered clips folder opened in Windows Explorer.",
+        });
+      }
+    } catch {
+      // Fallback
+    }
+  };
 
   const loadRecentProjects = async () => {
     setLoadingProjects(true);
@@ -207,6 +260,16 @@ function DashboardContent() {
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
+    // Login Gate Enforcement
+    if (!currentUser) {
+      addToast({
+        type: "error",
+        title: "Authentication Required",
+        message: "Please sign in or use Quick Demo Login to process videos.",
+      });
+      return;
+    }
+
     // Check Daily Quota (3 free / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
@@ -233,11 +296,14 @@ function DashboardContent() {
     });
 
     try {
+      const targetSec = targetDurationTier === "short" ? "30" : targetDurationTier === "long" ? "60" : "45";
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("target_duration", "45");
+      formData.append("target_duration", targetSec);
       formData.append("content_type", contentType);
       formData.append("duration_mode", "content_auto");
+      formData.append("ai_sensitivity", aiSensitivity);
+      formData.append("auto_face_tracking", autoFaceTracking.toString());
 
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -278,6 +344,16 @@ function DashboardContent() {
     e.preventDefault();
     if (!streamUrl.trim() || isAnalyzing) return;
 
+    // Login Gate Enforcement
+    if (!currentUser) {
+      addToast({
+        type: "error",
+        title: "Authentication Required",
+        message: "Please sign in or use Quick Demo Login to capture streams.",
+      });
+      return;
+    }
+
     // Check Daily Quota (3 free / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
@@ -304,13 +380,16 @@ function DashboardContent() {
     });
 
     try {
+      const targetSec = targetDurationTier === "short" ? "30" : targetDurationTier === "long" ? "60" : "45";
       const formData = new FormData();
       formData.append("url", streamUrl.trim());
       formData.append("stream_mode", "auto");
       formData.append("capture_duration", captureDuration.toString());
-      formData.append("target_duration", "45");
+      formData.append("target_duration", targetSec);
       formData.append("content_type", contentType);
       formData.append("duration_mode", "content_auto");
+      formData.append("ai_sensitivity", aiSensitivity);
+      formData.append("auto_face_tracking", autoFaceTracking.toString());
 
       const res = await fetch("/api/stream/ingest", {
         method: "POST",
@@ -788,6 +867,53 @@ function DashboardContent() {
                     );
                   })}
                 </div>
+
+                {/* Dynamic AI Engine Parameter Controls */}
+                <div className="mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Clip Length:</span>
+                    <div className="flex rounded-lg bg-black/10 dark:bg-black/30 p-0.5 border border-gray-700/40">
+                      {[
+                        { id: "short", label: "30s Short" },
+                        { id: "medium", label: "45s Viral" },
+                        { id: "long", label: "60s Narrative" }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTargetDurationTier(t.id as any)}
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                            targetDurationTier === t.id
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "text-gray-400 hover:text-white"
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sensitivity:</span>
+                    <select
+                      value={aiSensitivity}
+                      onChange={(e) => setAiSensitivity(e.target.value as any)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-black/10 dark:bg-black/40 border border-gray-700/50 text-gray-200 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="balanced">Balanced (Standard)</option>
+                      <option value="aggressive_viral">Aggressive (Viral Peaks)</option>
+                      <option value="deep_dialogue">Deep Dialogue (Hooks)</option>
+                    </select>
+                  </div>
+
+                  {systemInfo && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
+                      <Zap className="w-3 h-3 text-emerald-400" />
+                      <span>{systemInfo.hardware_mode} ({systemInfo.cpu_threads} Threads)</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -938,13 +1064,25 @@ function DashboardContent() {
               </h2>
             </div>
 
-            <Link
-              href="/library"
-              className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
-            >
-              <span>View All Projects ({recentProjects.length})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleOpenOutputFolder}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                title="Open rendered MP4 files in Windows Explorer"
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span>Open Output Folder</span>
+              </button>
+
+              <Link
+                href="/library"
+                className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+              >
+                <span>View All Projects ({recentProjects.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           {loadingProjects ? (
@@ -1192,6 +1330,15 @@ function DashboardContent() {
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           reason={upgradeReason}
+        />
+      )}
+
+      {/* Mandatory Creator Login Gate (Cannot be bypassed) */}
+      {authChecked && !currentUser && (
+        <AuthModal
+          isOpen={true}
+          isMandatory={true}
+          onClose={() => setCurrentUser(getCurrentUser())}
         />
       )}
     </AppShell>

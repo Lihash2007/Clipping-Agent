@@ -1657,6 +1657,40 @@ async def deactivate_desktop_license(authorized: None = Depends(verify_master_ke
     save_license_state(state)
     return {"status": "success", "message": "License deactivated from this device."}
 
+@app.get("/api/desktop/system-info")
+async def get_desktop_system_info():
+    """Detects local hardware acceleration capabilities (CPU cores, RAM, and NVIDIA CUDA)."""
+    import torch
+    cuda_available = torch.cuda.is_available()
+    device_name = torch.cuda.get_device_name(0) if cuda_available else "Multi-Core CPU"
+    cpu_count = os.cpu_count() or 4
+    
+    return {
+        "hardware_mode": "GPU Accelerated" if cuda_available else "Multi-Core CPU",
+        "cuda_available": cuda_available,
+        "device_name": device_name,
+        "cpu_threads": cpu_count,
+        "platform": sys.platform,
+        "whisper_device": "cuda" if cuda_available else "cpu",
+        "ffmpeg_threads": min(cpu_count, 16)
+    }
+
+@app.post("/api/desktop/open-output")
+async def open_desktop_output_folder():
+    """Opens the output renders folder directly in native Windows File Explorer."""
+    try:
+        abs_output = os.path.abspath(OUTPUT_DIR)
+        if sys.platform == "win32":
+            os.startfile(abs_output)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", abs_output])
+        else:
+            subprocess.Popen(["xdg-open", abs_output])
+        return {"status": "success", "folder": abs_output}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to open folder: {str(e)}")
+
+
 
 if __name__ == "__main__":
     import uvicorn

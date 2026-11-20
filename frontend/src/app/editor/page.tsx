@@ -19,6 +19,9 @@ import { canGenerateVideo, consumeGenerationCredit, getUserCredits } from "@/lib
 import { getStorageDestination, getGoogleDriveAccount } from "@/lib/googleDrive";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { useTheme } from "@/lib/theme";
+import { getCurrentUser, UserAccount } from "@/lib/auth";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { FolderOpen } from "lucide-react";
 import {
   Play,
   Pause,
@@ -82,6 +85,10 @@ function SingleWindowStudioContent() {
   const isDark = theme === "dark";
   const searchParams = useSearchParams();
   const projectParam = searchParams.get("project");
+
+  // Mandatory Authentication State
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Ingestion State (Matching assets/template.png)
   const [videoLink, setVideoLink] = useState("");
@@ -209,16 +216,40 @@ function SingleWindowStudioContent() {
   };
 
   useEffect(() => {
+    setCurrentUser(getCurrentUser());
+    setAuthChecked(true);
+
+    const handleAuthChange = (e: any) => {
+      setCurrentUser(e.detail || getCurrentUser());
+    };
+    window.addEventListener("pic_clip_auth_changed", handleAuthChange);
+
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
     return () => {
+      window.removeEventListener("pic_clip_auth_changed", handleAuthChange);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  const handleOpenOutputFolder = async () => {
+    try {
+      const res = await fetch("/api/desktop/open-output", { method: "POST" });
+      if (res.ok) {
+        addToast({
+          type: "success",
+          title: "Opened Output Folder",
+          message: "Rendered clips folder opened in Windows Explorer.",
+        });
+      }
+    } catch {
+      // Fallback
+    }
+  };
 
   // Quick Preset Actions (1-Click Pro Creator Profiles)
   const applyPreset = (presetName: "vlog" | "podcast" | "educational" | "gaming" | "facetrack" | "tiktok" | "square") => {
@@ -772,6 +803,16 @@ function SingleWindowStudioContent() {
   const handleRenderClip = async (clipId: string) => {
     const targetClip = clips.find((c) => c.id === clipId);
     if (!targetClip || !activeProject) return;
+
+    // Login Gate Enforcement
+    if (!currentUser) {
+      addToast({
+        type: "error",
+        title: "Authentication Required",
+        message: "Please sign in or use Quick Demo Login to render clips.",
+      });
+      return;
+    }
 
     // Daily Quota Check (3/day free)
     const check = canGenerateVideo();
@@ -2557,6 +2598,15 @@ function SingleWindowStudioContent() {
 
                           <button
                             type="button"
+                            onClick={handleOpenOutputFolder}
+                            className="w-full py-2.5 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                          >
+                            <FolderOpen className="w-4 h-4 text-amber-400" />
+                            <span>Open in File Explorer</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() =>
                               copyToClipboard(
                                 `${activeClip.title}\n\n#Gaming #Streamer #TwitchClips #Shorts #TikTok`,
@@ -2786,6 +2836,15 @@ function SingleWindowStudioContent() {
         onClose={() => setShowUpgradeModal(false)}
         reason={upgradeModalReason}
       />
+
+      {/* Mandatory Creator Login Gate (Cannot be bypassed) */}
+      {authChecked && !currentUser && (
+        <AuthModal
+          isOpen={true}
+          isMandatory={true}
+          onClose={() => setCurrentUser(getCurrentUser())}
+        />
+      )}
 
     </AppShell>
   );
