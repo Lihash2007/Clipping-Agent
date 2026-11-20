@@ -1180,6 +1180,9 @@ def save_platform_config(cfg: Dict[str, Any]):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
+load_config = load_platform_config
+save_config = save_platform_config
+
 def verify_master_key(x_master_key: Optional[str] = Header(None, alias="X-Master-Key"), key_query: Optional[str] = Query(None, alias="key")):
     supplied = x_master_key or key_query
     if not supplied or supplied != MASTER_SECRET_KEY:
@@ -1494,7 +1497,7 @@ async def redeem_license_key(req: RedeemCodeRequest):
     # 3. Optional Gumroad API Live Fallback (For Gumroad Native License Keys)
     if not matching_lic and ("-" in clean_code and len(clean_code) >= 12):
         try:
-            cfg = load_config()
+            cfg = load_platform_config()
             permalink = cfg.get("gumroad_permalink") or "picclip"
             verify_url = "https://api.gumroad.com/v2/licenses/verify"
             post_payload = urllib.parse.urlencode({
