@@ -6,15 +6,28 @@ native Microsoft Edge / WebView2 desktop window without any external browser.
 
 import os
 import sys
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Ensure backend modules and venv site-packages are always discoverable
+sys.path.insert(0, BASE_DIR)
+sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
+venv_site = os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages")
+if os.path.exists(venv_site):
+    sys.path.insert(0, venv_site)
+
 import time
 import socket
 import threading
 import urllib.request
 import uvicorn
-import webview
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
+try:
+    import webview
+except ImportError:
+    import subprocess
+    print("[*] Installing pywebview on first run...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "pywebview"], check=True)
+    import webview
 
 def find_available_port(default_port: int = 8000) -> int:
     """Finds an open localhost port."""
