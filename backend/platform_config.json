@@ -20,8 +20,8 @@
     },
     "lifetime": {
       "name": "Lifetime Founder Pass",
-      "price_usd": 199.0,
-      "price_inr": 8999,
+      "price_usd": 299.0,
+      "price_inr": 12999,
       "daily_limit": 9999
     },
     "topup_50": {
