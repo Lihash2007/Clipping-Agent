@@ -156,6 +156,11 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
     window.addEventListener("pic_clip_notifications_updated", handleNotifUpdate);
     window.addEventListener("pic_clip_credits_updated", handleCreditsUpdate);
 
+    const handleOpenLicenseModal = () => {
+      setShowDesktopLicenseModal(true);
+    };
+    window.addEventListener("open_desktop_license_modal", handleOpenLicenseModal);
+
     const handleAuthChange = (e: any) => {
       setUser(e.detail || getCurrentUser());
       refreshCredits();
@@ -708,37 +713,11 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setAuthModalMode("redeem");
-                setShowAuthModal(true);
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
-              title="Redeem a Gumroad, AppSumo, or UPI voucher code"
+              onClick={() => setShowUpgradeModal(true)}
+              className="px-3.5 py-1.5 rounded-full text-xs font-black text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md cursor-pointer flex items-center gap-1.5"
             >
-              <Ticket className="w-3.5 h-3.5 text-amber-400" />
-              <span>Redeem Code</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthModalMode("signin");
-                setShowAuthModal(true);
-              }}
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-            >
-              Sign In
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthModalMode("signup");
-                setShowAuthModal(true);
-              }}
-              className="px-3.5 py-1.5 rounded-full text-xs font-black text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md cursor-pointer"
-            >
-              Sign Up
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Upgrade to Pro</span>
             </button>
           </div>
         )}

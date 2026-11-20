@@ -557,6 +557,24 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
           </button>
         </div>
 
+        {/* Direct Gumroad License Key Activation Pill */}
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-950/30 p-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-4 h-4 text-violet-400 shrink-0" />
+            <span className="text-gray-300">Bought a Monthly, Annual, or Lifetime Pass on Gumroad?</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-colors cursor-pointer whitespace-nowrap shadow-sm"
+          >
+            Activate License Key
+          </button>
+        </div>
+
         {/* Dynamic Payment Gateways Footer */}
         <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between text-[11px] text-gray-400 gap-2">
           <div className="flex items-center gap-2.5">

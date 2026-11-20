@@ -804,17 +804,7 @@ function SingleWindowStudioContent() {
     const targetClip = clips.find((c) => c.id === clipId);
     if (!targetClip || !activeProject) return;
 
-    // Login Gate Enforcement
-    if (!currentUser) {
-      addToast({
-        type: "error",
-        title: "Authentication Required",
-        message: "Please sign in or use Quick Demo Login to render clips.",
-      });
-      return;
-    }
-
-    // Daily Quota Check (3/day free)
+    // Daily Quota Check (Free tier: 3 clips / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
       setUpgradeModalReason(check.reason);
@@ -822,7 +812,7 @@ function SingleWindowStudioContent() {
       addToast({
         type: "error",
         title: "Daily Free Limit Reached",
-        message: check.reason || "Daily free generation limit reached (3/3).",
+        message: check.reason || "Daily free generation limit reached (3/3). Upgrade to unlock unlimited clips.",
       });
       return;
     }
@@ -2836,15 +2826,6 @@ function SingleWindowStudioContent() {
         onClose={() => setShowUpgradeModal(false)}
         reason={upgradeModalReason}
       />
-
-      {/* Mandatory Creator Login Gate (Cannot be bypassed) */}
-      {authChecked && !currentUser && (
-        <AuthModal
-          isOpen={true}
-          isMandatory={true}
-          onClose={() => setCurrentUser(getCurrentUser())}
-        />
-      )}
 
     </AppShell>
   );

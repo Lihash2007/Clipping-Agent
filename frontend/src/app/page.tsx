@@ -260,17 +260,7 @@ function DashboardContent() {
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    // Login Gate Enforcement
-    if (!currentUser) {
-      addToast({
-        type: "error",
-        title: "Authentication Required",
-        message: "Please sign in or use Quick Demo Login to process videos.",
-      });
-      return;
-    }
-
-    // Check Daily Quota (3 free / day)
+    // Check Daily Quota (Free tier: 3 clips / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
       setUpgradeReason(check.reason);
@@ -278,7 +268,7 @@ function DashboardContent() {
       addToast({
         type: "error",
         title: "Daily Free Limit Reached",
-        message: check.reason || "Daily free generation limit reached (3/3).",
+        message: check.reason || "Daily free generation limit reached (3/3). Upgrade to unlock unlimited clips.",
       });
       return;
     }
@@ -344,17 +334,7 @@ function DashboardContent() {
     e.preventDefault();
     if (!streamUrl.trim() || isAnalyzing) return;
 
-    // Login Gate Enforcement
-    if (!currentUser) {
-      addToast({
-        type: "error",
-        title: "Authentication Required",
-        message: "Please sign in or use Quick Demo Login to capture streams.",
-      });
-      return;
-    }
-
-    // Check Daily Quota (3 free / day)
+    // Check Daily Quota (Free tier: 3 clips / day)
     const check = canGenerateVideo();
     if (!check.allowed) {
       setUpgradeReason(check.reason);
@@ -362,7 +342,7 @@ function DashboardContent() {
       addToast({
         type: "error",
         title: "Daily Free Limit Reached",
-        message: check.reason || "Daily free generation limit reached (3/3).",
+        message: check.reason || "Daily free generation limit reached (3/3). Upgrade to unlock unlimited clips.",
       });
       return;
     }
@@ -1330,15 +1310,6 @@ function DashboardContent() {
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           reason={upgradeReason}
-        />
-      )}
-
-      {/* Mandatory Creator Login Gate (Cannot be bypassed) */}
-      {authChecked && !currentUser && (
-        <AuthModal
-          isOpen={true}
-          isMandatory={true}
-          onClose={() => setCurrentUser(getCurrentUser())}
         />
       )}
     </AppShell>
