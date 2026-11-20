@@ -79,16 +79,16 @@ export default function PricingPage() {
   const discPercent = appliedPromo?.discountPercent ?? 0;
 
   const creatorCalc = calculateLocalizedPrice(
-    creatorCfg?.price_usd ?? 9.99,
-    creatorCfg?.price_inr ?? 799,
+    creatorCfg?.price_usd ?? 10.99,
+    creatorCfg?.price_inr ?? 499,
     currency,
     billingCycle,
     discPercent
   );
 
   const proCalc = calculateLocalizedPrice(
-    proCfg?.price_usd ?? 19.99,
-    proCfg?.price_inr ?? 1499,
+    proCfg?.price_usd ?? 105.0,
+    proCfg?.price_inr ?? 4799,
     currency,
     billingCycle,
     discPercent
@@ -125,34 +125,44 @@ export default function PricingPage() {
   };
 
   const handleSelectTier = (tier: PlanTier) => {
-    if (tier === currentTier) return;
-    setIsProcessing(true);
-    setTimeout(() => {
-      upgradePlanTier(tier);
-      setIsProcessing(false);
+    if (tier === "free") {
+      upgradePlanTier("free");
       addNotification({
         type: "system",
-        title: `Plan Activated: ${tier.toUpperCase()}!`,
-        message: `Your account is now upgraded with new daily generation quotas.`,
-        actionUrl: "/settings",
-        actionLabel: "View Subscription",
+        title: "Active Free Starter Plan",
+        message: "Switched to Free Starter (3 video generations per day).",
       });
-    }, 500);
+      return;
+    }
+
+    // Direct user to Gumroad purchase
+    const gumroadUrl = "https://gumroad.com/l/picclip";
+    if (typeof window !== "undefined") {
+      window.open(gumroadUrl, "_blank", "noopener,noreferrer");
+      addNotification({
+        type: "system",
+        title: "Opened Gumroad Checkout in Browser",
+        message: "Complete your checkout on Gumroad, then enter your License Key below to activate this PC.",
+      });
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+      }, 200);
+    }
   };
 
   const handleBuyPack = (amount: number) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      addTopUpCredits(amount);
-      setIsProcessing(false);
+    const gumroadUrl = "https://gumroad.com/l/picclip";
+    if (typeof window !== "undefined") {
+      window.open(gumroadUrl, "_blank", "noopener,noreferrer");
       addNotification({
         type: "system",
-        title: `Added +${amount} Generations!`,
-        message: `Your account received +${amount} instant top-up credits.`,
-        actionUrl: "/editor",
-        actionLabel: "Create Clip",
+        title: "Opened Gumroad Checkout in Browser",
+        message: `Complete your +${amount} clip pack purchase on Gumroad, then paste your License Key to activate.`,
       });
-    }, 500);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("open_desktop_license_modal"));
+      }, 200);
+    }
   };
 
   return (

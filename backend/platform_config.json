@@ -8,20 +8,20 @@
     },
     "creator": {
       "name": "Monthly Pro Pass",
-      "price_usd": 15.0,
-      "price_inr": 699,
+      "price_usd": 10.99,
+      "price_inr": 499,
       "daily_limit": 9999
     },
     "pro": {
       "name": "Annual Pro Pass",
-      "price_usd": 120.0,
-      "price_inr": 5499,
+      "price_usd": 105.0,
+      "price_inr": 4799,
       "daily_limit": 9999
     },
     "lifetime": {
       "name": "Lifetime Founder Pass",
-      "price_usd": 299.0,
-      "price_inr": 12999,
+      "price_usd": 189.99,
+      "price_inr": 8499,
       "daily_limit": 9999
     },
     "topup_50": {

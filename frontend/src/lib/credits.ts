@@ -41,7 +41,7 @@ const PLAN_CONFIGS: Record<
   },
   creator: {
     name: "Monthly Pro Pass",
-    price: "$15 / mo",
+    price: "$10.99 / mo",
     dailyLimit: 9999,
     monthlyLimit: 99999,
     maxResolution: "1080p",
@@ -51,7 +51,7 @@ const PLAN_CONFIGS: Record<
   },
   pro: {
     name: "Annual Pro Pass",
-    price: "$120 / yr",
+    price: "$105.00 / yr",
     dailyLimit: 9999,
     monthlyLimit: 99999,
     maxResolution: "4K",

@@ -291,7 +291,7 @@ export function DesktopLicenseModal({
                 rel="noopener noreferrer"
                 className="font-semibold text-violet-400 hover:text-violet-300 flex items-center gap-1 transition-colors"
               >
-                Buy on Gumroad ($15/mo • $120/yr • $299 Lifetime) <ExternalLink className="w-3.5 h-3.5" />
+                Buy on Gumroad ($10.99/mo • $105/yr • $189.99 Lifetime) <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
 
