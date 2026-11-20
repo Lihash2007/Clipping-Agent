@@ -19,6 +19,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { upgradePlanTier } from "@/lib/credits";
 
 interface LicenseStatus {
   is_licensed: boolean;
@@ -107,6 +108,7 @@ export function DesktopLicenseModal({
 
       setSuccessMsg(data.message || "License successfully activated on this machine!");
       setLicenseKeyInput("");
+      upgradePlanTier("pro");
       await fetchStatus();
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to activate license.");

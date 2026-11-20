@@ -16,9 +16,10 @@
     "credits_bonus": 100,
     "source": "gumroad",
     "description": "Gumroad Pro Streamer Unlimited Pass",
-    "redeemed": false,
-    "redeemed_by": null,
-    "created_at": 1732117000
+    "redeemed": true,
+    "redeemed_by": "PIC-070E-F616-97FD-EC87",
+    "created_at": 1732117000,
+    "redeemed_at": 1795197009
   },
   {
     "code": "GUMROAD-PACK-50",

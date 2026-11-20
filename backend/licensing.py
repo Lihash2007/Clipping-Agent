@@ -157,17 +157,22 @@ def check_anti_clock_rollback(state: Dict[str, Any]) -> bool:
     return True
 
 
-def verify_gumroad_license(license_key: str, permalink: str = "picclip") -> Dict[str, Any]:
+def verify_gumroad_license(license_key: str, permalink: str = "picclip", product_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Validates license directly against Gumroad's API with seat counting.
     Locks the license to 1 device.
+    Supports both product_permalink and modern product_id.
     """
     verify_url = "https://api.gumroad.com/v2/licenses/verify"
-    payload = urllib.parse.urlencode({
+    post_params = {
         "product_permalink": permalink,
         "license_key": license_key.strip(),
         "increment_uses_count": "true"
-    }).encode("utf-8")
+    }
+    if product_id:
+        post_params["product_id"] = product_id
+
+    payload = urllib.parse.urlencode(post_params).encode("utf-8")
 
     req = urllib.request.Request(
         verify_url,
@@ -193,7 +198,7 @@ def activate_license(license_key: str) -> Dict[str, Any]:
     """
     Activates the license key on this specific machine.
     1. Checks hardware fingerprint.
-    2. Validates against Gumroad or internal master keys.
+    2. Validates against Gumroad or internal master keys or voucher database.
     3. Locks state to this hardware ID.
     """
     current_machine_id = get_hardware_fingerprint()
@@ -221,6 +226,47 @@ def activate_license(license_key: str) -> Dict[str, Any]:
             "expires_at": "Never"
         }
 
+    # Check local voucher database (for admin-generated vouchers / direct sales)
+    vouchers_file = os.path.join(BASE_DIR, "license_keys.json")
+    if os.path.exists(vouchers_file):
+        try:
+            with open(vouchers_file, "r", encoding="utf-8") as vf:
+                vouchers = json.load(vf)
+            for v in vouchers:
+                v_code = (v.get("code") or "").strip().upper()
+                if hmac.compare_digest(v_code, clean_key):
+                    now_ts = int(time.time())
+                    # Determine tier
+                    tier = (v.get("tier") or "pro").upper()
+                    plan_name = "LIFETIME" if tier == "PRO" else f"PRO_{tier}"
+                    v["redeemed"] = True
+                    v["redeemed_by"] = current_machine_id
+                    v["redeemed_at"] = now_ts
+                    with open(vouchers_file, "w", encoding="utf-8") as vf_write:
+                        json.dump(vouchers, vf_write, indent=2)
+
+                    state = {
+                        "is_active": True,
+                        "license_key": clean_key,
+                        "machine_id": current_machine_id,
+                        "plan_type": plan_name,
+                        "activated_at": now_ts,
+                        "expires_at": None,
+                        "last_verified_at": now_ts,
+                        "last_monotonic_time": now_ts,
+                        "customer_email": f"voucher_{clean_key[:8].lower()}@local"
+                    }
+                    save_license_state(state)
+                    return {
+                        "success": True,
+                        "message": f"Successfully activated {plan_name} voucher license on this PC!",
+                        "plan": plan_name,
+                        "machine_id": current_machine_id,
+                        "expires_at": "Lifetime"
+                    }
+        except Exception:
+            pass
+
     # Verify with Gumroad API
     gumroad_res = verify_gumroad_license(clean_key)
     if not gumroad_res.get("success"):
@@ -234,11 +280,11 @@ def activate_license(license_key: str) -> Dict[str, Any]:
     recurrence = purchase.get("recurrence")  # "monthly", "yearly", None
     variants = purchase.get("variants") or ""
     
-    # Check if subscription is ended or chargebacked
-    if purchase.get("ended") or purchase.get("chargebacked"):
+    # Check if subscription is ended, refunded, or chargebacked
+    if purchase.get("ended") or purchase.get("chargebacked") or purchase.get("refunded"):
         return {
             "success": False,
-            "message": "This subscription has ended or was refunded."
+            "message": "This subscription has ended, was refunded, or chargebacked."
         }
 
     # Calculate expiration timestamp

@@ -1499,12 +1499,17 @@ async def redeem_license_key(req: RedeemCodeRequest):
         try:
             cfg = load_platform_config()
             permalink = cfg.get("gumroad_permalink") or "picclip"
+            product_id = cfg.get("gumroad_product_id")
             verify_url = "https://api.gumroad.com/v2/licenses/verify"
-            post_payload = urllib.parse.urlencode({
+            post_dict = {
                 "product_permalink": permalink,
                 "license_key": clean_code,
                 "increment_uses_count": "true"
-            }).encode("utf-8")
+            }
+            if product_id:
+                post_dict["product_id"] = product_id
+
+            post_payload = urllib.parse.urlencode(post_dict).encode("utf-8")
             gr_req = urllib.request.Request(verify_url, data=post_payload, headers={"User-Agent": "PicClip/1.0"})
             with urllib.request.urlopen(gr_req, timeout=4) as gr_resp:
                 gr_data = json.loads(gr_resp.read().decode("utf-8"))
