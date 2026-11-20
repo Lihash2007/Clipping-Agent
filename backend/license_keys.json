@@ -1,0 +1,43 @@
+[
+  {
+    "code": "GUMROAD-CREATOR-99",
+    "tier": "creator",
+    "credits_bonus": 50,
+    "source": "gumroad",
+    "description": "Gumroad Creator Pass Voucher (1-Month + 50 Bonus Credits)",
+    "redeemed": true,
+    "redeemed_by": "creator@streamer.in",
+    "created_at": 1732117000,
+    "redeemed_at": 1795188051
+  },
+  {
+    "code": "GUMROAD-PRO-VIP",
+    "tier": "pro",
+    "credits_bonus": 100,
+    "source": "gumroad",
+    "description": "Gumroad Pro Streamer Unlimited Pass",
+    "redeemed": false,
+    "redeemed_by": null,
+    "created_at": 1732117000
+  },
+  {
+    "code": "GUMROAD-PACK-50",
+    "tier": null,
+    "credits_bonus": 50,
+    "source": "gumroad",
+    "description": "Gumroad +50 Instant Clip Credits Pack",
+    "redeemed": false,
+    "redeemed_by": null,
+    "created_at": 1732117000
+  },
+  {
+    "code": "INDIA-STREAMER-PASS",
+    "tier": "creator",
+    "credits_bonus": 25,
+    "source": "direct_upi",
+    "description": "Direct UPI Voucher Code for Indian Streamers",
+    "redeemed": false,
+    "redeemed_by": null,
+    "created_at": 1732117000
+  }
+]

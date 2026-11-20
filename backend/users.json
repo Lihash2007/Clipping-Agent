@@ -1,0 +1,29 @@
+[
+  {
+    "id": "usr_master_admin",
+    "name": "Master Admin (Lihas)",
+    "email": "admin@picclip.ai",
+    "password_hash": "admin123",
+    "country": "IN",
+    "platform": "twitch",
+    "tier": "pro",
+    "daily_used": 0,
+    "purchased_credits": 1000,
+    "is_whitelisted": true,
+    "created_at": 1732115000,
+    "token": "tok_b532e25ca0bf4e4badf9c7b1edad7d8e"
+  },
+  {
+    "id": "usr_creator_01",
+    "name": "Streamer Pro",
+    "email": "creator@streamer.in",
+    "password_hash": "creator123",
+    "country": "IN",
+    "platform": "youtube",
+    "tier": "creator",
+    "daily_used": 2,
+    "purchased_credits": 100,
+    "is_whitelisted": false,
+    "created_at": 1732116000
+  }
+]

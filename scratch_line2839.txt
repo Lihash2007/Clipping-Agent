@@ -1,0 +1,38 @@
+Created At: 2026-11-19T21:32:54+05:30
+Completed At: 2026-11-19T21:33:03+05:30
+Created At: 2026-11-19T21:32:54+05:30
+Completed At: 2026-11-19T21:33:03+05:30
+Command exited with code 0.
+
+Command output:
+{
+    "value":  [
+                  {
+                      "project_id":  "69a83995-cf29-411d-8bf8-fe304a63a834",
+                      "file_id":  "69a83995-cf29-411d-8bf8-fe304a63a834",
+                      "title":  "Stream Capture (Gaming)",
+                      "source_url":  "https://www.twitch.tv/lacy",
+                      "content_type":  "gaming",
+                      "video_url":  "/uploads/69a83995-cf29-411d-8bf8-fe304a63a834.mp4",
+                      "clips":  [
+                                    "@{start_time=176.0; end_time=208.0; peak_time=195.2; peak_z=1.0; raw_score=2023.38; avg_rms=100; burst_ratio=11.69; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=22.05; id=1; score=99; transcript=Intense Climax Moment (Peak at 195.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=The Craziest Clutch Reaction ð; social=}",
+                                    "@{start_time=224.0; end_time=256.0; peak_time=243.2; peak_z=1.0; raw_score=2014.34; avg_rms=100; burst_ratio=7.17; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=26.7; id=2; score=99; transcript=Intense Climax Moment (Peak at 243.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=Unbelievable Streaming Highlight â¡; social=}",
+                                    "@{start_time=16.0; end_time=48.0; peak_time=35.2; peak_z=1.0; raw_score=2012.84; avg_rms=100; burst_ratio=6.42; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=40.7; id=3; score=99; transcript=Intense Climax Moment (Peak at 35.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=He Did NOT See That Coming! ð¥; social=}",
+                                    "@{start_time=48.0; end_time=80.0; peak_time=67.2; peak_z=1.0; raw_score=2011.2; avg_rms=100; burst_ratio=5.6; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=51.77; id=4; score=99; transcript=Intense Climax Moment (Peak at 67.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=The Craziest Clutch Reaction ð; social=}",
+                                    "@{start_time=112.0; end_time=144.0; peak_time=131.2; peak_z=1.0; raw_score=2010.34; avg_rms=100; burst_ratio=5.17; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=44.87; id=5; score=99; transcript=Intense Climax Moment (Peak at 131.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=Wait for this play... ð¯; social=}",
+                                    "@{start_time=256.0; end_time=288.0; peak_time=275.2; peak_z=1.0; raw_score=2010.64; avg_rms=100; burst_ratio=5.32; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=16.57; id=6; score=99; transcript=Intense Climax Moment (Peak at 275.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=The Craziest Clutch Reaction ð; social=}",
+                                    "@{start_time=80.0; end_time=112.0; peak_time=99.2; peak_z=1.0; raw_score=2008.74; avg_rms=100; burst_ratio=4.37; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=46.05; id=7; score=99; transcript=Intense Climax Moment (Peak at 99.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=Unbelievable Streaming Highlight â¡; social=}",
+                                    "@{start_time=144.0; end_time=176.0; peak_time=163.2; peak_z=1.0; raw_score=2007.06; avg_rms=100; burst_ratio=3.53; duration_tag=Action Climax ð¥; duration_seconds=32.0; motion_score=19.84; id=8; score=99; transcript=Intense Climax Moment (Peak at 163.2s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=The Craziest Clutch Reaction ð; social=}",
+                                    "@{start_time=0.0; end_time=14.5; peak_time=0.5; peak_z=0.82; raw_score=7.454055050100156; avg_rms=100; burst_ratio=2.78; duration_tag=Quick Clutch ð¯; duration_seconds=14.5; motion_score=47.73; id=9; score=99; transcript=Intense Climax Moment (Peak at 0.5s) ð¥; layout_type=VALIDATED_FACECAM; layout_description=Continuous Streamer Facecam validated in top_left (55% persistence); suggested_layout=smart; breakdown=; title=Unbelievable Streaming Highlight â¡; social=}"
+                                ],
+                      "segments":  [
+
+                                   ],
+                      "rendered_clips":  {
+
+                                         },
+                      "created_at":  1795103849.762107
+                  }
+              ],
+    "Count":  1
+}

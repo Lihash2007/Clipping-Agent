@@ -1,0 +1,74 @@
+{
+  "pricing": {
+    "starter": {
+      "name": "Free Starter",
+      "price_usd": 0,
+      "price_inr": 0,
+      "daily_limit": 3
+    },
+    "creator": {
+      "name": "Creator Pass",
+      "price_usd": 9.99,
+      "price_inr": 299,
+      "daily_limit": 25
+    },
+    "pro": {
+      "name": "Pro Streamer Unlimited",
+      "price_usd": 19.99,
+      "price_inr": 999,
+      "daily_limit": 9999
+    },
+    "topup_50": {
+      "name": "50 Clip Credit Pack",
+      "price_usd": 4.99,
+      "price_inr": 399,
+      "credits": 50
+    }
+  },
+  "quotas": {
+    "daily_free_generations": 3,
+    "monthly_cap": 10,
+    "max_duration_sec": 60,
+    "watermark_free_tier": true
+  },
+  "announcement": {
+    "enabled": true,
+    "badge": "fuxk",
+    "message": "\ud83d\udd25 Special Launch Deal: Use code INDIA50 or CREATOR50 to get 50% OFF your first month!",
+    "link": "/settings",
+    "link_text": "Claim Offer"
+  },
+  "promo_codes": [
+    {
+      "code": "INDIA50",
+      "discount_percent": 50,
+      "target_tier": "all",
+      "active": true,
+      "description": "50% off for Creators"
+    },
+    {
+      "code": "CREATOR50",
+      "discount_percent": 50,
+      "target_tier": "all",
+      "active": true,
+      "description": "50% off global launch discount"
+    },
+    {
+      "code": "VIPSTREAMER",
+      "discount_percent": 100,
+      "target_tier": "creator",
+      "active": true,
+      "description": "100% Free Creator Pass for Streamers"
+    }
+  ],
+  "whitelisted_creators": [
+    "admin@picclip.ai",
+    "master@picclip.ai",
+    "lihash@picclip.ai"
+  ],
+  "maintenance_mode": false,
+  "currency_rates": {
+    "usd_to_inr": 86.5
+  },
+  "last_updated": 1795186256
+}
