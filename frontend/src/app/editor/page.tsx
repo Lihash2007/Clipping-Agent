@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProjectItem, Clip } from "@/lib/types";
-import { fetchProjects, formatErrorMessage, safeErrorText, checkStreamConnectivity, StreamConnectivityResult, cancelJob } from "@/lib/api";
+import { fetchProjects, formatErrorMessage, safeErrorText, checkStreamConnectivity, StreamConnectivityResult, cancelJob, handleDownloadAndReveal } from "@/lib/api";
 import {
   saveActiveJob,
   getActiveJob,
@@ -243,12 +243,21 @@ function SingleWindowStudioContent() {
         addToast({
           type: "success",
           title: "Opened Output Folder",
-          message: "Rendered clips folder opened in Windows Explorer.",
+          message: "Rendered clips folder opened in native File Explorer / Finder.",
         });
       }
     } catch {
       // Fallback
     }
+  };
+
+  const handleDownloadAndRevealClip = async (url: string, filename?: string) => {
+    addToast({
+      type: "success",
+      title: "Opening Local Disk...",
+      message: "Highlighting rendered MP4 master in File Explorer / Finder.",
+    });
+    await handleDownloadAndReveal(url, filename);
   };
 
   // Quick Preset Actions (1-Click Pro Creator Profiles)
@@ -893,26 +902,20 @@ function SingleWindowStudioContent() {
               [`${bounds.finalStart}_${bounds.finalEnd}`]: outUrl,
             }));
 
-            const storageDest = getStorageDestination();
-            const gdrive = getGoogleDriveAccount();
-            const storageNote = storageDest === "gdrive" && gdrive.connected
-              ? " (Synced to your Google Drive /PIC-CLIP Studio/)"
-              : "";
-
             addNotification({
               type: "render",
               title: `Clip #${targetClip.id} Rendered!`,
-              message: `Master 9:16 vertical video rendered at 60 FPS with subtitles.${storageNote}`,
+              message: `Master 9:16 vertical video rendered at 60 FPS and saved to local disk.`,
               downloadUrl: outUrl,
               actionUrl: outUrl,
-              actionLabel: "Download MP4",
+              actionLabel: "Show in Folder",
             });
 
             addToast({
               type: "success",
-              title: "Clip Ready to Download!",
+              title: "Clip Ready on Local Disk!",
               message: `Clip #${targetClip.id} rendered with streamer facecam & subtitles.`,
-              actionLabel: "Download MP4",
+              actionLabel: "Show in Folder",
               actionUrl: outUrl
             });
           } else if (jData.status === "failed") {
@@ -1341,14 +1344,15 @@ function SingleWindowStudioContent() {
 
                         <div>
                           {renderedUrl ? (
-                            <a
-                              href={renderedUrl}
-                              download={`clip_${clip.id}.mp4`}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm transition-all"
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadAndRevealClip(renderedUrl, `clip_${clip.id}.mp4`)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                              title="Reveal in File Explorer / Finder & Save MP4"
                             >
-                              <Download className="w-3 h-3" />
-                              <span>Download HD</span>
-                            </a>
+                              <FolderOpen className="w-3 h-3" />
+                              <span>Show in Folder</span>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -2580,14 +2584,14 @@ function SingleWindowStudioContent() {
                     <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
                       {downloadUrls[activeClip.id] || downloadUrls[`${getClipBounds(activeClip).finalStart}_${getClipBounds(activeClip).finalEnd}`] ? (
                         <div className="space-y-2">
-                          <a
-                            href={downloadUrls[activeClip.id] || downloadUrls[`${getClipBounds(activeClip).finalStart}_${getClipBounds(activeClip).finalEnd}`]}
-                            download={`clip_${activeClip.id}.mp4`}
-                            className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-all"
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadAndRevealClip(downloadUrls[activeClip.id] || downloadUrls[`${getClipBounds(activeClip).finalStart}_${getClipBounds(activeClip).finalEnd}`], `clip_${activeClip.id}.mp4`)}
+                            className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
                           >
-                            <Download className="w-4 h-4" />
-                            <span>Download Rendered MP4 Master</span>
-                          </a>
+                            <FolderOpen className="w-4 h-4" />
+                            <span>Save & Open in File Explorer / Finder</span>
+                          </button>
 
                           <button
                             type="button"
@@ -2595,7 +2599,7 @@ function SingleWindowStudioContent() {
                             className="w-full py-2.5 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
                           >
                             <FolderOpen className="w-4 h-4 text-amber-400" />
-                            <span>Open in File Explorer</span>
+                            <span>Browse Output Directory</span>
                           </button>
 
                           <button
@@ -2801,14 +2805,14 @@ function SingleWindowStudioContent() {
                 <h4 className="font-extrabold">{toast.title}</h4>
                 <p className="opacity-80 mt-0.5 leading-relaxed">{safeErrorText(toast.message)}</p>
                 {toast.actionUrl && (
-                  <a
-                    href={toast.actionUrl}
-                    download
-                    className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all"
+                  <button
+                    type="button"
+                    onClick={() => toast.actionUrl && handleDownloadAndRevealClip(toast.actionUrl)}
+                    className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all cursor-pointer"
                   >
-                    <Download className="w-3 h-3" />
-                    <span>{toast.actionLabel || "Download"}</span>
-                  </a>
+                    <FolderOpen className="w-3 h-3" />
+                    <span>{toast.actionLabel || "Show in Folder"}</span>
+                  </button>
                 )}
               </div>
             </div>

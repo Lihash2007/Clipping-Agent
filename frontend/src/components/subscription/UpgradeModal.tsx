@@ -212,7 +212,7 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
           </h2>
 
           <p className="text-xs text-gray-400">
-            {reason || "Autonomous AI stream clipper with local processing and personal Google Drive sync for zero cloud bills."}
+            {reason || "Autonomous AI stream clipper with local processing and instant File Explorer storage for zero cloud bills."}
           </p>
 
           {/* Currency Switcher & Billing Period */}
@@ -381,7 +381,7 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Local Disk & Google Drive (0 server storage)</span>
+                  <span>100% Private Local Disk Storage (0 cloud uploads)</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-400">
                   <span className="text-xs font-bold text-gray-400">•</span>
@@ -456,7 +456,7 @@ export function UpgradeModal({ isOpen, onClose, reason }: UpgradeModalProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-purple-300 flex-shrink-0" />
-                  <span>Auto-export to Personal Google Drive</span>
+                  <span>Instant File Explorer & Finder Local Storage</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-purple-300 flex-shrink-0" />

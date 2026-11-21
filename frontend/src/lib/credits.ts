@@ -26,7 +26,8 @@ const PLAN_CONFIGS: Record<
     maxResolution: string;
     maxFps: number;
     watermark: boolean;
-    googleDriveSync: boolean;
+    localStorageOnly: boolean;
+    googleDriveSync?: boolean;
   }
 > = {
   free: {
@@ -37,7 +38,7 @@ const PLAN_CONFIGS: Record<
     maxResolution: "720p",
     maxFps: 30,
     watermark: true,
-    googleDriveSync: true,
+    localStorageOnly: true,
   },
   creator: {
     name: "Monthly Pro Pass",
@@ -47,7 +48,7 @@ const PLAN_CONFIGS: Record<
     maxResolution: "1080p",
     maxFps: 60,
     watermark: false,
-    googleDriveSync: true,
+    localStorageOnly: true,
   },
   pro: {
     name: "Annual Pro Pass",
@@ -57,7 +58,7 @@ const PLAN_CONFIGS: Record<
     maxResolution: "4K",
     maxFps: 60,
     watermark: false,
-    googleDriveSync: true,
+    localStorageOnly: true,
   },
 };
 

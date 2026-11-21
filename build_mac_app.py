@@ -34,13 +34,14 @@ def main():
 
     # 2. PyInstaller macOS Packaging Command
     icon_param = ""
-    icon_path = os.path.join(BASE_DIR, "assets", "logo.png")
-    if os.path.exists(icon_path):
-        icon_param = f'--icon "{icon_path}"'
+    icns_path = os.path.join(BASE_DIR, "assets", "logo.icns")
+    if os.path.exists(icns_path):
+        icon_param = f'--icon "{icns_path}"'
 
     py_cmd = (
         f'"{sys.executable}" -m PyInstaller '
         '--name "PicClipStudio" '
+        '--noconfirm '
         '--windowed '
         '--onedir '
         '--osx-bundle-identifier "com.picclip.studio" '
@@ -74,10 +75,30 @@ def main():
     if platform.system() == "Darwin":
         dmg_path = os.path.join(BASE_DIR, "PicClipStudio-macOS.dmg")
         print("[*] Creating native Apple Disk Image (.dmg)...")
-        dmg_cmd = f'hdiutil create -volname "PicClip Studio" -srcfolder "{dist_dir}" -ov -format UDZO "{dmg_path}"'
+        dmg_staging = os.path.join(BASE_DIR, "dmg_staging")
+        if os.path.exists(dmg_staging):
+            shutil.rmtree(dmg_staging, ignore_errors=True)
+        os.makedirs(dmg_staging, exist_ok=True)
+
+        if os.path.exists(app_path):
+            dest_app = os.path.join(dmg_staging, "PicClip Studio.app")
+            if os.path.isdir(app_path):
+                shutil.copytree(app_path, dest_app)
+            else:
+                shutil.copy(app_path, dest_app)
+        else:
+            shutil.copytree(dist_dir, os.path.join(dmg_staging, "PicClipStudio"))
+
+        try:
+            os.symlink("/Applications", os.path.join(dmg_staging, "Applications"))
+        except Exception as sym_err:
+            print(f"[!] Could not create /Applications symlink: {sym_err}")
+
+        dmg_cmd = f'hdiutil create -volname "PicClip Studio" -srcfolder "{dmg_staging}" -ov -format UDZO "{dmg_path}"'
         subprocess.run(dmg_cmd, shell=True)
         if os.path.exists(dmg_path):
             print(f"[+] Successfully built Drag-and-Drop DMG: {dmg_path}")
+        shutil.rmtree(dmg_staging, ignore_errors=True)
 
     print("\n" + "=" * 60)
     print("  macOS Packaging Succeeded!")

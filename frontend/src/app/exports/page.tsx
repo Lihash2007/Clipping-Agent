@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { useTheme } from "@/lib/theme";
 import { ProjectItem, Clip } from "@/lib/types";
-import { fetchProjects } from "@/lib/api";
+import { fetchProjects, handleDownloadAndReveal, openDesktopOutputFolder } from "@/lib/api";
 import {
   DownloadCloud,
   Play,
@@ -15,7 +15,8 @@ import {
   Flame,
   X,
   Scissors,
-  Film
+  Film,
+  FolderOpen
 } from "lucide-react";
 
 interface RenderedClipItem {
@@ -36,6 +37,22 @@ export default function ExportsPage() {
   const [activeVideoModal, setActiveVideoModal] = useState<RenderedClipItem | null>(null);
   const [activeSocialModal, setActiveSocialModal] = useState<RenderedClipItem | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const handleDownloadClick = async (downloadUrl: string, filename?: string) => {
+    showToast("Opening rendered MP4 in File Explorer / Finder...");
+    await handleDownloadAndReveal(downloadUrl, filename);
+  };
+
+  const handleOpenFolderClick = async () => {
+    showToast("Opening output folder in File Explorer / Finder...");
+    await openDesktopOutputFolder();
+  };
 
   useEffect(() => {
     loadExports();
@@ -99,26 +116,49 @@ export default function ExportsPage() {
     >
       <div className="p-8 md:p-12 max-w-7xl mx-auto space-y-8">
         {/* Header Stats */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className={`text-xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>
               Finished Video Vault
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {renderedClips.length} Master Vertical Clips Rendered Across Your Workspaces
+              {renderedClips.length} Master Vertical Clips Rendered Across Your Workspaces &bull; 100% Local Disk Storage
             </p>
           </div>
 
-          <Link
-            href="/"
-            className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-xs ${
-              isDark ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-black hover:bg-gray-800 text-white"
-            }`}
-          >
-            <Scissors className="w-3.5 h-3.5" />
-            <span>Open Studio Editor</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenFolderClick}
+              className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 border cursor-pointer shadow-xs ${
+                isDark
+                  ? "bg-[#181b24] border-[#292d3e] hover:bg-[#202534] text-white"
+                  : "bg-white border-gray-200 hover:bg-gray-100 text-gray-800"
+              }`}
+              title="Open outputs folder directly in Windows File Explorer or macOS Finder"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-purple-400" />
+              <span>Open Output Folder</span>
+            </button>
+
+            <Link
+              href="/"
+              className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-xs ${
+                isDark ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-black hover:bg-gray-800 text-white"
+              }`}
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              <span>Open Studio Editor</span>
+            </Link>
+          </div>
         </div>
+
+        {/* Action Feedback Toast */}
+        {toastMsg && (
+          <div className="p-3 px-4 rounded-xl bg-purple-600/90 text-white text-xs font-bold flex items-center gap-2 shadow-lg animate-in fade-in slide-in-from-top duration-200">
+            <FolderOpen className="w-4 h-4 shrink-0" />
+            <span>{toastMsg}</span>
+          </div>
+        )}
 
         {/* Content Grid */}
         {loading ? (
@@ -216,16 +256,16 @@ export default function ExportsPage() {
                   <div className={`mt-4 pt-3 border-t flex items-center gap-2 ${
                     isDark ? "border-[#1e222d]" : "border-gray-100"
                   }`}>
-                    <a
-                      href={item.downloadUrl}
-                      download
+                    <button
+                      onClick={() => handleDownloadClick(item.downloadUrl, `clip_${item.clipKey}.mp4`)}
                       className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
                         isDark ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-black hover:bg-gray-800 text-white"
                       }`}
+                      title="Reveal in File Explorer / Finder & Save MP4"
                     >
-                      <DownloadCloud className="w-3.5 h-3.5" />
-                      <span>Download</span>
-                    </a>
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      <span>Open in Explorer / Save</span>
+                    </button>
 
                     <button
                       onClick={() => setActiveSocialModal(item)}
@@ -275,16 +315,15 @@ export default function ExportsPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <a
-                  href={activeVideoModal.downloadUrl}
-                  download
-                  className={`w-full py-3 rounded-xl font-extrabold text-xs transition-colors flex items-center justify-center gap-2 shadow ${
+                <button
+                  onClick={() => handleDownloadClick(activeVideoModal.downloadUrl, `clip_${activeVideoModal.clipKey}.mp4`)}
+                  className={`w-full py-3 rounded-xl font-extrabold text-xs transition-colors flex items-center justify-center gap-2 shadow cursor-pointer ${
                     isDark ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-black hover:bg-gray-800 text-white"
                   }`}
                 >
-                  <DownloadCloud className="w-4 h-4" />
-                  <span>Download MP4 Master</span>
-                </a>
+                  <FolderOpen className="w-4 h-4" />
+                  <span>Save & Open in File Explorer / Finder</span>
+                </button>
               </div>
             </div>
           </div>

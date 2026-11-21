@@ -31,3 +31,5 @@ backend/license_state.json
 dist/
 build/
 *.spec
+*.zip
+*.dmg

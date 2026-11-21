@@ -286,3 +286,57 @@ export async function clearAllPlatformData(): Promise<{ success: boolean; messag
     };
   }
 }
+
+export async function revealFileInExplorer(filenameOrUrl: string): Promise<{ success: boolean; path?: string; is_file?: boolean }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/desktop/reveal-file`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: filenameOrUrl }),
+    });
+    if (!res.ok) throw new Error("Backend reveal call failed");
+    const data = await res.json();
+    return { success: true, path: data.path, is_file: data.is_file };
+  } catch (err) {
+    console.warn("Desktop reveal-file error:", err);
+    return { success: false };
+  }
+}
+
+export async function openDesktopOutputFolder(): Promise<{ success: boolean; folder?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/desktop/open-output`, { method: "POST" });
+    if (!res.ok) throw new Error("Backend open-output call failed");
+    const data = await res.json();
+    return { success: true, folder: data.folder };
+  } catch (err) {
+    console.warn("Desktop open-output error:", err);
+    return { success: false };
+  }
+}
+
+/**
+ * Universal Download & Reveal Helper:
+ * 1. Calls backend to open native Windows File Explorer or macOS Finder with the file selected.
+ * 2. Triggers browser download fallback for standard browsers.
+ */
+export async function handleDownloadAndReveal(downloadUrl: string, filename?: string): Promise<void> {
+  const cleanName = filename || downloadUrl.split("/").pop()?.split("?")[0] || "rendered_clip.mp4";
+  
+  // 1. Trigger local OS reveal in File Explorer / Finder
+  revealFileInExplorer(cleanName);
+
+  // 2. Trigger browser download anchor fallback
+  if (typeof window !== "undefined") {
+    try {
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = cleanName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.warn("Browser fallback download error:", e);
+    }
+  }
+}

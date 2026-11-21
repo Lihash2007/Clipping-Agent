@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import subprocess
 import uuid
 import time
 import json
@@ -1739,9 +1740,70 @@ async def get_desktop_system_info():
         "ffmpeg_threads": min(cpu_count, 16)
     }
 
+class RevealFileRequest(BaseModel):
+    filename: str = ""
+    project_id: Optional[str] = None
+
+@app.post("/api/desktop/reveal-file")
+async def reveal_file_in_file_manager(req: RevealFileRequest):
+    """
+    Opens native Windows File Explorer or macOS Finder with the target rendered MP4 highlighted,
+    or opens the output folder if the specific file is not yet found.
+    Enforces 100% local disk storage without any cloud dependency.
+    """
+    try:
+        target_path = None
+        if req.filename:
+            # Clean filename from any URL query params or /download/ prefixes
+            raw_fname = req.filename.split("?")[0].replace("\\", "/")
+            base_fname = os.path.basename(raw_fname)
+            candidate = os.path.join(OUTPUT_DIR, base_fname)
+            if os.path.exists(candidate):
+                target_path = os.path.abspath(candidate)
+            elif not base_fname.endswith(".mp4") and os.path.exists(candidate + ".mp4"):
+                target_path = os.path.abspath(candidate + ".mp4")
+
+        if not target_path or not os.path.exists(target_path):
+            target_path = os.path.abspath(OUTPUT_DIR)
+
+        if sys.platform == "win32":
+            if os.path.isfile(target_path):
+                # /select,"path" opens File Explorer and highlights the file
+                subprocess.Popen(f'explorer /select,"{target_path}"')
+            else:
+                os.startfile(target_path)
+        elif sys.platform == "darwin":
+            if os.path.isfile(target_path):
+                subprocess.Popen(["open", "-R", target_path])
+            else:
+                subprocess.Popen(["open", target_path])
+        else:
+            if os.path.isfile(target_path):
+                subprocess.Popen(["xdg-open", os.path.dirname(target_path)])
+            else:
+                subprocess.Popen(["xdg-open", target_path])
+
+        return {
+            "status": "success",
+            "path": target_path,
+            "is_file": os.path.isfile(target_path),
+            "platform": sys.platform
+        }
+    except Exception as e:
+        logger.error(f"Error revealing file in file manager: {e}")
+        try:
+            abs_dir = os.path.abspath(OUTPUT_DIR)
+            if sys.platform == "win32":
+                os.startfile(abs_dir)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", abs_dir])
+            return {"status": "fallback", "folder": abs_dir}
+        except Exception as err2:
+            raise HTTPException(status_code=500, detail=f"Failed to open file manager: {str(err2)}")
+
 @app.post("/api/desktop/open-output")
 async def open_desktop_output_folder():
-    """Opens the output renders folder directly in native Windows File Explorer."""
+    """Opens the output renders folder directly in native Windows File Explorer or macOS Finder."""
     try:
         abs_output = os.path.abspath(OUTPUT_DIR)
         if sys.platform == "win32":

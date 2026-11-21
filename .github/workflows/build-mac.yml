@@ -38,4 +38,5 @@ jobs:
           path: |
             PicClipStudio-macOS.dmg
             PicClipStudio-macOS.zip
+          if-no-files-found: warn
           retention-days: 14

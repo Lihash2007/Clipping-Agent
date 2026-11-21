@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { useTheme } from "@/lib/theme";
-import { fetchStorageStatus, clearStorageCache, clearAllPlatformData, StorageStatus, formatErrorMessage, safeErrorText } from "@/lib/api";
+import { fetchStorageStatus, clearStorageCache, clearAllPlatformData, StorageStatus, formatErrorMessage, safeErrorText, openDesktopOutputFolder } from "@/lib/api";
 import { clearLastActiveProjectId, clearActiveJob } from "@/lib/activeJob";
 import {
   Settings,
@@ -20,12 +20,12 @@ import {
   AlertTriangle,
   X,
   Zap,
-  Cloud,
   Check,
   ExternalLink,
   ShieldCheck,
   ArrowRight,
-  Tag
+  Tag,
+  FolderOpen
 } from "lucide-react";
 import {
   getUserCredits,
@@ -79,34 +79,15 @@ export default function SettingsPage() {
   const [credits, setCredits] = useState<UserCreditState>(getUserCredits());
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Storage Destination & Google Drive State
-  const [storageDest, setStorageDest] = useState<StorageLocation>(getStorageDestination());
-  const [gdriveAccount, setGdriveAccount] = useState<GoogleDriveAccount>(getGoogleDriveAccount());
-  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
-  const [gdriveSuccessMsg, setGdriveSuccessMsg] = useState("");
+  // Storage Destination State (Enforced 100% Local Disk Storage)
+  const [openFolderMsg, setOpenFolderMsg] = useState("");
 
   const refreshCredits = () => setCredits(getUserCredits());
-  const refreshStorage = () => {
-    setStorageDest(getStorageDestination());
-    setGdriveAccount(getGoogleDriveAccount());
-  };
 
-  const handleConnectGoogleDrive = () => {
-    setIsConnectingDrive(true);
-    setTimeout(() => {
-      const acc = connectGoogleDriveMock("creator.streamer@gmail.com", "Pro Streamer");
-      setGdriveAccount(acc);
-      setStorageDest("gdrive");
-      setIsConnectingDrive(false);
-      setGdriveSuccessMsg("Google Drive connected successfully! Videos will save to /PIC-CLIP Studio/");
-      setTimeout(() => setGdriveSuccessMsg(""), 5000);
-    }, 700);
-  };
-
-  const handleDisconnectGoogleDrive = () => {
-    disconnectGoogleDrive();
-    setGdriveAccount(getGoogleDriveAccount());
-    setStorageDest("local");
+  const handleOpenFolder = async () => {
+    setOpenFolderMsg("Opening outputs folder in File Explorer / Finder...");
+    await openDesktopOutputFolder();
+    setTimeout(() => setOpenFolderMsg(""), 4000);
   };
 
   const handleWipeAll = async () => {
@@ -138,10 +119,8 @@ export default function SettingsPage() {
   useEffect(() => {
     loadStorage();
     refreshCredits();
-    refreshStorage();
 
     window.addEventListener("pic_clip_credits_updated", refreshCredits);
-    window.addEventListener("pic_clip_storage_updated", refreshStorage);
 
     try {
       const saved = localStorage.getItem("pic_clip_studio_settings");
@@ -165,13 +144,12 @@ export default function SettingsPage() {
 
     return () => {
       window.removeEventListener("pic_clip_credits_updated", refreshCredits);
-      window.removeEventListener("pic_clip_storage_updated", refreshStorage);
     };
   }, []);
 
   const handleSave = () => {
     try {
-      setStorageDestination(storageDest);
+      setStorageDestination("local");
       const payload = {
         watermarkEnabled,
         watermarkText,
@@ -523,179 +501,72 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* SECTION 4: USER STORAGE DESTINATION & GOOGLE DRIVE (ZERO-COST HOSTING) */}
+        {/* SECTION 4: LOCAL DISK STORAGE & RENDER VAULT */}
         <div className={`rounded-3xl p-6 md:p-8 space-y-6 shadow-xs border ${
           isDark ? "bg-[#111319] border-[#232733]" : "bg-white border-gray-200/80"
         }`}>
           <div className={`border-b pb-3 ${isDark ? "border-[#1e222d]" : "border-gray-100"}`}>
             <div className="flex items-center justify-between">
               <h2 className={`text-sm font-black flex items-center gap-2 ${isDark ? "text-white" : "text-gray-950"}`}>
-                <Cloud className={`w-4 h-4 ${isDark ? "text-purple-400" : "text-black"}`} /> User Storage Destination (Zero Server Footprint)
+                <HardDrive className={`w-4 h-4 ${isDark ? "text-purple-400" : "text-black"}`} /> Local Disk Storage & Render Vault
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                100% Free Storage
+                100% Private Local Disk
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              Save your rendered 9:16 clips to your local computer disk or connect your personal Google Drive (15 GB Free Quota).
+              All vertical MP4 master exports are saved directly to your local computer disk with zero third-party cloud uploads.
             </p>
           </div>
 
-          {gdriveSuccessMsg && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              <span>{gdriveSuccessMsg}</span>
+          {openFolderMsg && (
+            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 flex-shrink-0" />
+              <span>{openFolderMsg}</span>
             </div>
           )}
 
-          {/* Storage Options Radio Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Option A: Local Disk */}
-            <div
-              onClick={() => setStorageDest("local")}
-              className={`rounded-2xl border p-5 space-y-3 cursor-pointer transition-all ${
-                storageDest === "local"
-                  ? "border-purple-500 bg-purple-500/10 shadow-md"
-                  : isDark
-                  ? "border-[#252a3a] hover:border-white/20 bg-[#161822]"
-                  : "border-gray-200 hover:border-gray-300 bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                    <HardDrive className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black text-white">Local Computer Disk</h3>
-                    <p className="text-[10px] text-gray-400 font-mono">Standard Browser Downloads</p>
-                  </div>
-                </div>
-                {storageDest === "local" && (
-                  <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center">
-                    <Check className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Rendered videos download straight to your local Downloads directory. Zero cloud storage required.
-              </p>
-            </div>
-
-            {/* Option B: Personal Google Drive */}
-            <div
-              onClick={() => {
-                if (gdriveAccount.connected) {
-                  setStorageDest("gdrive");
-                }
-              }}
-              className={`rounded-2xl border p-5 space-y-3 transition-all ${
-                storageDest === "gdrive"
-                  ? "border-purple-500 bg-purple-500/10 shadow-md cursor-pointer"
-                  : isDark
-                  ? "border-[#252a3a] hover:border-white/20 bg-[#161822]"
-                  : "border-gray-200 hover:border-gray-300 bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Cloud className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black text-white">Personal Google Drive</h3>
-                    <p className="text-[10px] text-gray-400 font-mono">15 GB Free Cloud Storage</p>
-                  </div>
-                </div>
-                {storageDest === "gdrive" && (
-                  <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center">
-                    <Check className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Connect your Google account to auto-save clips into your own Google Drive <code className="text-purple-300 font-mono">/PIC-CLIP Studio/</code> folder.
-              </p>
-            </div>
-
-          </div>
-
-          {/* Google Drive Status & Connection Card */}
-          <div className={`p-4 rounded-2xl border ${
+          {/* Local Disk Vault Card */}
+          <div className={`p-6 rounded-3xl border space-y-4 ${
             isDark ? "bg-[#141620] border-[#252938]" : "bg-gray-50 border-gray-200"
           }`}>
-            {gdriveAccount.connected ? (
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                    <div>
-                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Connected:</span>
-                        <span className="font-mono text-emerald-400">{gdriveAccount.email}</span>
-                      </span>
-                      <p className="text-[10px] text-gray-400 font-mono">
-                        Target Folder: Google Drive &gt; {gdriveAccount.folderName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStorageDest(storageDest === "gdrive" ? "local" : "gdrive")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                        storageDest === "gdrive"
-                          ? "bg-purple-600 text-white border-purple-500"
-                          : "bg-white/5 border-white/10 text-gray-300 hover:text-white"
-                      }`}
-                    >
-                      {storageDest === "gdrive" ? "Primary Destination: Active" : "Set as Primary Storage"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDisconnectGoogleDrive}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <HardDrive className="w-5 h-5" />
                 </div>
-
-                {/* Quota Bar */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex justify-between text-[10px] font-mono text-gray-400">
-                    <span>Drive Usage: {gdriveAccount.usedSpaceGb.toFixed(1)} GB of {gdriveAccount.totalSpaceGb} GB</span>
-                    <span className="text-emerald-400 font-bold">{(gdriveAccount.totalSpaceGb - gdriveAccount.usedSpaceGb).toFixed(1)} GB Free</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all"
-                      style={{ width: `${(gdriveAccount.usedSpaceGb / gdriveAccount.totalSpaceGb) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-xs font-bold text-white">Connect Google Drive (Zero-Cost BYOS)</h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Authenticate once to store all your clips directly on your personal 15 GB free Google Drive.
+                  <h3 className="text-sm font-extrabold text-white">Local Storage Vault (<code className="font-mono text-purple-400">/output</code>)</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Direct local NVMe/SSD storage &bull; Zero cloud bandwidth latency &bull; 100% Private
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleConnectGoogleDrive}
-                  disabled={isConnectingDrive}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md whitespace-nowrap self-start sm:self-auto"
-                >
-                  {isConnectingDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                  <span>{isConnectingDrive ? "Connecting..." : "Connect Google Drive"}</span>
-                </button>
               </div>
-            )}
+
+              <button
+                type="button"
+                onClick={handleOpenFolder}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md whitespace-nowrap self-start sm:self-auto"
+              >
+                <FolderOpen className="w-4 h-4" />
+                <span>Open Folder in File Explorer / Finder</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-white/5 text-xs text-gray-300">
+              <div className="p-3 rounded-xl bg-black/20 border border-white/5">
+                <span className="font-bold text-white block mb-0.5">Direct SSD Storage</span>
+                <span className="text-[11px] text-gray-400">Renders write immediately to your disk. No uploads or internet downloads needed.</span>
+              </div>
+              <div className="p-3 rounded-xl bg-black/20 border border-white/5">
+                <span className="font-bold text-white block mb-0.5">Native OS Reveal</span>
+                <span className="text-[11px] text-gray-400">Clicking "Download" opens File Explorer (Windows) or Finder (Mac) with the clip selected.</span>
+              </div>
+              <div className="p-3 rounded-xl bg-black/20 border border-white/5">
+                <span className="font-bold text-white block mb-0.5">Uncompressed Master Quality</span>
+                <span className="text-[11px] text-gray-400">Preserves maximum bitrate, 60 FPS smoothness, and lossless AAC audio.</span>
+              </div>
+            </div>
           </div>
         </div>
 

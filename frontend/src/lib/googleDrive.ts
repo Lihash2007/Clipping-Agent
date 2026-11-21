@@ -32,19 +32,14 @@ function notifyStorageChanged() {
 }
 
 export function getStorageDestination(): StorageLocation {
-  if (typeof window === "undefined") return "local";
-  try {
-    const raw = localStorage.getItem(STORAGE_DEST_KEY);
-    return (raw as StorageLocation) || "local";
-  } catch {
-    return "local";
-  }
+  return "local";
 }
 
 export function setStorageDestination(dest: StorageLocation) {
+  // Enforced 100% local disk storage for maximum performance and privacy
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_DEST_KEY, dest);
+    localStorage.setItem(STORAGE_DEST_KEY, "local");
     notifyStorageChanged();
   } catch (e) {
     console.warn("Failed to set storage destination:", e);
