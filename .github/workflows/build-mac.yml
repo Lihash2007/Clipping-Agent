@@ -8,8 +8,8 @@ on:
 
 jobs:
   build-macos:
-    name: Build PicClip Studio for macOS (Apple Silicon M1/M2/M3/M4 & Intel)
-    runs-on: macos-14 # Apple Silicon M1 Runner
+    name: Build PicClip Studio for macOS (Apple Silicon & Intel)
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Repository
@@ -21,37 +21,15 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install System Dependencies
-        run: |
-          brew install ffmpeg create-dmg
-
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
           pip install pyinstaller pywebview
 
-      - name: Build Next.js Static Export
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Compile macOS Application with PyInstaller
+      - name: Compile macOS Application with PyInstaller & Build DMG
         run: |
           python build_mac_app.py
-
-      - name: Create Native Apple Disk Image (.dmg)
-        run: |
-          mkdir -p dmg_assets
-          # Build Drag-and-Drop installer dmg
-          hdiutil create -volname "PicClip Studio" -srcfolder "dist/PicClipStudio" -ov -format UDZO "PicClipStudio-macOS.dmg"
-          zip -r "PicClipStudio-macOS.zip" "dist/PicClipStudio"
 
       - name: Upload macOS Artifacts (.dmg and .zip)
         uses: actions/upload-artifact@v4
