@@ -19,6 +19,35 @@ def run_step(desc: str, cmd: str, cwd: str = BASE_DIR):
         sys.exit(res.returncode)
     print(f"[+] {desc} complete.")
 
+def prepare_clean_backend(staging_dir: str):
+    """Prepares a clean copy of backend without venv, uploads, outputs, or pycache."""
+    if os.path.exists(staging_dir):
+        shutil.rmtree(staging_dir, ignore_errors=True)
+    os.makedirs(staging_dir, exist_ok=True)
+
+    src_backend = os.path.join(BASE_DIR, "backend")
+
+    # Copy files
+    for item in os.listdir(src_backend):
+        s_path = os.path.join(src_backend, item)
+        d_path = os.path.join(staging_dir, item)
+
+        # Ignore developer environments, temp uploads/outputs, and cache
+        if item in ["venv", "uploads", "output", "outputs", "__pycache__"]:
+            continue
+
+        if os.path.isdir(s_path):
+            shutil.copytree(s_path, d_path)
+        else:
+            shutil.copy2(s_path, d_path)
+
+    # Ensure empty uploads and output folders exist
+    for sub in ["uploads", "output"]:
+        sub_path = os.path.join(staging_dir, sub)
+        os.makedirs(sub_path, exist_ok=True)
+        with open(os.path.join(sub_path, ".gitkeep"), "w") as f:
+            pass
+
 def main():
     print("=" * 60)
     print("  PicClip Studio Pro - Standalone Desktop Packaging Pipeline")
@@ -31,7 +60,7 @@ def main():
             print(f"[*] Cleaning {folder}/...")
             shutil.rmtree(path, ignore_errors=True)
 
-    # 1.5 Ensure frontend static UI is synced into backend/frontend_dist
+    # 2. Ensure frontend static UI is synced into backend/frontend_dist
     frontend_out = os.path.join(BASE_DIR, "frontend", "out")
     backend_dist = os.path.join(BASE_DIR, "backend", "frontend_dist")
     if not os.path.exists(backend_dist) or not os.path.exists(os.path.join(backend_dist, "index.html")):
@@ -43,7 +72,12 @@ def main():
             run_step("Compiling Next.js UI", "npm run build", cwd=os.path.join(BASE_DIR, "frontend"))
             shutil.copytree(frontend_out, backend_dist)
 
-    # 2. PyInstaller Packaging Command
+    # 3. Create clean backend staging folder (NO backend/venv)
+    backend_clean = os.path.join(BASE_DIR, "backend_clean")
+    print("[*] Preparing clean backend distribution (excluding venv)...")
+    prepare_clean_backend(backend_clean)
+
+    # 4. PyInstaller Packaging Command
     # Collects backend modules, licensing, models, and assets
     py_cmd = (
         f'"{sys.executable}" -m PyInstaller '
@@ -51,24 +85,35 @@ def main():
         '--windowed '  # No console window
         '--onedir '    # Fast startup directory distribution
         '--icon "assets/logo.png" '
-        '--add-data "backend;backend" '
+        f'--add-data "{backend_clean};backend" '
         '--add-data "assets;assets" '
         '--hidden-import "uvicorn" '
         '--hidden-import "fastapi" '
         '--hidden-import "webview" '
-        '--hidden-import "clr_loader" '
-        '--hidden-import "pythonnet" '
         '--hidden-import "licensing" '
         'desktop_launcher.py'
     )
 
-    run_step("Compiling Standalone Desktop Application with PyInstaller", py_cmd)
+    try:
+        run_step("Compiling Standalone Desktop Application with PyInstaller", py_cmd)
+    finally:
+        # Cleanup staging
+        if os.path.exists(backend_clean):
+            shutil.rmtree(backend_clean, ignore_errors=True)
 
+    dist_dir = os.path.join(BASE_DIR, "dist")
     print("\n" + "=" * 60)
     print("  Packaging Succeeded!")
-    print(f"  Distribution folder created at: {os.path.join(BASE_DIR, 'dist', 'PicClipStudio')}")
+    print(f"  Distribution folder created at: {os.path.join(dist_dir, 'PicClipStudio')}")
     print("  Run PicClipStudio.exe to launch the standalone desktop app.")
     print("=" * 60)
+
+    # 5. Compress into distributable zip archive
+    print("\n[*] Compressing distribution into PicClipStudio-Windows.zip...")
+    zip_target = os.path.join(BASE_DIR, "PicClipStudio-Windows")
+    shutil.make_archive(zip_target, "zip", dist_dir)
+    zip_size_mb = os.path.getsize(f"{zip_target}.zip") / (1024 * 1024)
+    print(f"[+] Created {zip_target}.zip ({zip_size_mb:.2f} MB)")
 
 if __name__ == "__main__":
     main()

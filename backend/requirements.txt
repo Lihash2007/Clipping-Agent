@@ -13,3 +13,4 @@ sentence-transformers
 yt-dlp>=2024.08.06
 requests>=2.31.0
 torch
+pywebview>=5.0

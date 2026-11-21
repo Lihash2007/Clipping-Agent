@@ -12,14 +12,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 
-# Cross-platform venv site-packages discovery (Windows, macOS, Linux)
-for p in [
-    os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages"),
-    os.path.join(BASE_DIR, "backend", "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
-    os.path.join(BASE_DIR, "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
-]:
-    if os.path.exists(p):
-        sys.path.insert(0, p)
+# Only search local development venv site-packages when uncompiled
+if not getattr(sys, "frozen", False):
+    for p in [
+        os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages"),
+        os.path.join(BASE_DIR, "backend", "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
+        os.path.join(BASE_DIR, "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
+    ]:
+        if os.path.exists(p):
+            sys.path.insert(0, p)
 
 import time
 import socket
@@ -106,8 +107,22 @@ def main():
         text_select=True
     )
 
-    # Start PyWebView event loop
-    webview.start(debug=False)
+    # Start PyWebView native window with automatic browser fallback
+    try:
+        if sys.platform == "win32":
+            webview.start(gui="edgechromium", debug=False)
+        else:
+            webview.start(debug=False)
+    except Exception as err:
+        print(f"[!] Native desktop window error: {err}. Falling back to default browser...")
+        import webbrowser
+        webbrowser.open(target_url)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+
     print("[*] PicClip Studio closed.")
 
 if __name__ == "__main__":
