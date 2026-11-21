@@ -11,9 +11,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Ensure backend modules and venv site-packages are always discoverable
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
-venv_site = os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages")
-if os.path.exists(venv_site):
-    sys.path.insert(0, venv_site)
+
+# Cross-platform venv site-packages discovery (Windows, macOS, Linux)
+for p in [
+    os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages"),
+    os.path.join(BASE_DIR, "backend", "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
+    os.path.join(BASE_DIR, "venv", "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages"),
+]:
+    if os.path.exists(p):
+        sys.path.insert(0, p)
 
 import time
 import socket

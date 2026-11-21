@@ -1708,19 +1708,34 @@ async def deactivate_desktop_license(authorized: None = Depends(verify_master_ke
 
 @app.get("/api/desktop/system-info")
 async def get_desktop_system_info():
-    """Detects local hardware acceleration capabilities (CPU cores, RAM, and NVIDIA CUDA)."""
+    """Detects local hardware acceleration capabilities (NVIDIA CUDA, Apple Silicon Metal MPS, or CPU)."""
     import torch
     cuda_available = torch.cuda.is_available()
-    device_name = torch.cuda.get_device_name(0) if cuda_available else "Multi-Core CPU"
+    mps_available = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+    
+    if cuda_available:
+        hardware_mode = "NVIDIA CUDA GPU"
+        device_name = torch.cuda.get_device_name(0)
+        whisper_dev = "cuda"
+    elif mps_available:
+        hardware_mode = "Apple Silicon Metal GPU (MPS)"
+        device_name = "Apple Silicon Unified GPU / Neural Engine"
+        whisper_dev = "cpu"
+    else:
+        hardware_mode = "Multi-Core CPU"
+        device_name = "Intel / AMD Multi-Core CPU"
+        whisper_dev = "cpu"
+
     cpu_count = os.cpu_count() or 4
     
     return {
-        "hardware_mode": "GPU Accelerated" if cuda_available else "Multi-Core CPU",
+        "hardware_mode": hardware_mode,
         "cuda_available": cuda_available,
+        "mps_available": mps_available,
         "device_name": device_name,
         "cpu_threads": cpu_count,
         "platform": sys.platform,
-        "whisper_device": "cuda" if cuda_available else "cpu",
+        "whisper_device": whisper_dev,
         "ffmpeg_threads": min(cpu_count, 16)
     }
 

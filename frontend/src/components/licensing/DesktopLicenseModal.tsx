@@ -152,7 +152,7 @@ export function DesktopLicenseModal({
             </div>
             <div>
               <h2 className="text-xl font-bold tracking-tight">PicClip Studio Desktop License</h2>
-              <p className="text-xs text-gray-400">Node-locked hardware protection & Gumroad subscription sync</p>
+              <p className="text-xs text-gray-400">Node-locked hardware protection & Gumroad subscription sync (Windows & macOS)</p>
             </div>
           </div>
         </div>

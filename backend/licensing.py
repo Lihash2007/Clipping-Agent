@@ -70,9 +70,15 @@ def get_hardware_fingerprint() -> str:
         raw_identifiers.append(disk or "WIN_UNKNOWN_DISK")
 
     elif system == "Darwin":
-        # macOS IOPlatformUUID
+        # 1. macOS IOPlatformUUID
         uuid = run_cmd("ioreg -d2 -c IOPlatformExpertDevice | awk -F\\\" '/IOPlatformUUID/{print $(NF-1)}'")
         raw_identifiers.append(uuid or "MAC_UNKNOWN_UUID")
+        # 2. Hardware Serial Number
+        serial = run_cmd("ioreg -l | grep IOPlatformSerialNumber | awk -F\\\" '{print $4}'")
+        raw_identifiers.append(serial or "MAC_UNKNOWN_SERIAL")
+        # 3. Apple Silicon / Mac Hardware Model
+        model = run_cmd("sysctl -n hw.model")
+        raw_identifiers.append(model or "MAC_UNKNOWN_MODEL")
     else:
         # Linux / Unix
         if os.path.exists("/etc/machine-id"):
