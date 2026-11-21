@@ -22,6 +22,8 @@ __pycache__/
 Thumbs.db
 
 # Project Specific
+backend/frontend_dist/
+frontend/out/
 backend/uploads/*
 !backend/uploads/.gitkeep
 backend/output/*
@@ -33,3 +35,14 @@ build/
 *.spec
 *.zip
 *.dmg
+PicClip_Viral_Ad_60s.mp4
+PicClip_YouTube_Showcase.mp4
+assets/vidoes/
+assets/ad_preview/
+assets/cut_checks/
+assets/raw_frames/
+assets/input_video.mp4
+assets/raw_audio.wav
+create_promo_video.py
+edit_youtube_video.py
+temp_yt_build/

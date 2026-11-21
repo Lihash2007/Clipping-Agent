@@ -538,7 +538,6 @@ def run_stream_ingest_job(
 # 4. API Endpoints
 # ==========================================
 
-@app.get("/")
 @app.get("/api/health")
 def read_root():
     return {
@@ -1816,6 +1815,17 @@ async def open_desktop_output_folder():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to open folder: {str(e)}")
 
+
+
+# =====================================================================
+# Standalone Embedded UI Mount (Windows & macOS)
+# =====================================================================
+_FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend_dist")
+if not os.path.exists(_FRONTEND_DIST):
+    _FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "out"))
+
+if os.path.exists(_FRONTEND_DIST) and os.path.exists(os.path.join(_FRONTEND_DIST, "index.html")):
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="frontend_ui")
 
 
 if __name__ == "__main__":

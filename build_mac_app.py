@@ -32,6 +32,18 @@ def main():
             print(f"[*] Cleaning {folder}/...")
             shutil.rmtree(path, ignore_errors=True)
 
+    # 1.5 Ensure frontend static UI is synced into backend/frontend_dist
+    frontend_out = os.path.join(BASE_DIR, "frontend", "out")
+    backend_dist = os.path.join(BASE_DIR, "backend", "frontend_dist")
+    if not os.path.exists(backend_dist) or not os.path.exists(os.path.join(backend_dist, "index.html")):
+        if os.path.exists(frontend_out) and os.path.exists(os.path.join(frontend_out, "index.html")):
+            print(f"[*] Syncing frontend/out to {backend_dist}...")
+            shutil.copytree(frontend_out, backend_dist)
+        else:
+            print("[*] Building Next.js static UI...")
+            run_step("Compiling Next.js UI", "npm run build", cwd=os.path.join(BASE_DIR, "frontend"))
+            shutil.copytree(frontend_out, backend_dist)
+
     # 2. PyInstaller macOS Packaging Command
     icon_param = ""
     icns_path = os.path.join(BASE_DIR, "assets", "logo.icns")
