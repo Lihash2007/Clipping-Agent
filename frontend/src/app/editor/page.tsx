@@ -1656,10 +1656,17 @@ function SingleWindowStudioContent() {
 
                   {/* OVERLAY 1: TOP HOOK BANNER */}
                   {hookBannerText.trim() && (
-                    <div className="absolute top-8 inset-x-3 pointer-events-none z-20 text-center animate-in fade-in duration-200">
-                      <span className="inline-block bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-black text-xs md:text-sm px-4 py-1.5 rounded-xl shadow-2xl border border-white/20 uppercase tracking-wide">
-                        {hookBannerText}
-                      </span>
+                    <div className="absolute top-7 inset-x-2 pointer-events-none z-20 text-center animate-in fade-in duration-200">
+                      <div className="relative inline-block max-w-[94%]">
+                        {/* Auto Clipped Badge */}
+                        <div className="absolute -top-3 right-3 bg-[#181820]/95 border border-white/20 rounded-full px-2 py-0.5 text-[8px] font-bold text-gray-200 flex items-center gap-1 shadow-lg z-10">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          Auto Clipped by PicClip
+                        </div>
+                        <span className="inline-block bg-gradient-to-r from-[#991beb] via-[#e6007a] to-[#ff7f00] text-white font-black text-xs md:text-sm px-5 py-2.5 rounded-2xl shadow-2xl border border-white/30 uppercase tracking-wide drop-shadow-md">
+                          {hookBannerText}
+                        </span>
+                      </div>
                     </div>
                   )}
 

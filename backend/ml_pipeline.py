@@ -407,6 +407,20 @@ def get_mediapipe_face_detector(model_selection: int = 0, min_detection_confiden
 
     return None
 
+def get_opencv_face_cascade():
+    """
+    Safely loads OpenCV Haar frontal face cascade.
+    Guarantees zero crashes across any platform or stripped cv2 build.
+    """
+    try:
+        if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+            xml_path = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
+            if os.path.exists(xml_path):
+                return cv2.CascadeClassifier(xml_path)
+    except Exception:
+        pass
+    return None
+
 class ActiveFramingEngine:
     """
     Industry-Grade Video Preprocessing & Spatial Layout Evaluation Engine.
@@ -444,7 +458,7 @@ class ActiveFramingEngine:
         }
 
         det = get_mediapipe_face_detector(model_selection=0, min_detection_confidence=0.35)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        face_cascade = get_opencv_face_cascade()
 
         sample_times = np.linspace(min(4.0, dur * 0.05), max(dur - 4.0, dur * 0.95), 20)
         tile_hits = {k: [] for k in tiles}
@@ -596,7 +610,7 @@ class ActiveFramingEngine:
 
         centers = []
         f_count = 0
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        face_cascade = get_opencv_face_cascade()
 
         while cap.isOpened() and len(centers) < max_samples:
             ret, frame = cap.read()
@@ -655,7 +669,7 @@ class ActiveFramingEngine:
         """
         try:
             det = get_mediapipe_face_detector(model_selection=1, min_detection_confidence=0.30)
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            face_cascade = get_opencv_face_cascade()
 
             cap = cv2.VideoCapture(video_path)
             fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -905,6 +919,180 @@ class MasterCompositor:
     """
 
     @classmethod
+    def generate_hook_banner_overlay(
+        cls,
+        text: str,
+        target_w: int = 1080,
+        target_h: int = 1920,
+        banner_w: Optional[int] = None,
+        y_pos: Optional[int] = None,
+        badge_text: str = "Auto Clipped by PicClip",
+        show_badge: bool = True,
+        show_mascot: bool = True
+    ) -> Image.Image:
+        """
+        Generates a modern, high-CTR linear gradient rounded hook title banner overlay.
+        Matches top viral short-form aesthetics (purple-to-orange gradient pill, 
+        bold typography, drop shadow, top-right 'Auto Clipped by PicClip' badge, and mascot).
+        """
+        canvas = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+        if not text or not text.strip():
+            return canvas
+
+        bw = banner_w or min(int(target_w * 0.90), 960)
+        by = y_pos if y_pos is not None else int(target_h * 0.08)
+
+        # 1. Resolve bold/impact font across Windows, macOS, and Linux
+        font_candidates = [
+            "C:/Windows/Fonts/impact.ttf", "C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/segoeuib.ttf",
+            "/System/Library/Fonts/Supplemental/Impact.ttf", "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/Library/Fonts/Arial Bold.ttf", "/System/Library/Fonts/Helvetica.ttc",
+            "impact.ttf", "arialbd.ttf", "segoeuib.ttf", "DejaVuSans-Bold.ttf", "arial.ttf"
+        ]
+        font = None
+        for fc in font_candidates:
+            try:
+                font = ImageFont.truetype(fc, 50)
+                break
+            except Exception:
+                continue
+        if font is None:
+            font = ImageFont.load_default()
+
+        badge_font = None
+        for fc in [
+            "C:/Windows/Fonts/segoeuib.ttf", "C:/Windows/Fonts/arialbd.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
+            "segoeuib.ttf", "arialbd.ttf", "arial.ttf"
+        ]:
+            try:
+                badge_font = ImageFont.truetype(fc, 22)
+                break
+            except Exception:
+                continue
+        if badge_font is None:
+            badge_font = ImageFont.load_default()
+
+        clean_text = text.strip().upper()
+        words = clean_text.split()
+        lines = []
+        curr_line = []
+        max_inner_w = bw - 90
+
+        for word in words:
+            test_line = " ".join(curr_line + [word])
+            bbox = font.getbbox(test_line)
+            lw = bbox[2] - bbox[0]
+            if lw <= max_inner_w:
+                curr_line.append(word)
+            else:
+                if curr_line:
+                    lines.append(" ".join(curr_line))
+                    curr_line = [word]
+                else:
+                    lines.append(word)
+                    curr_line = []
+        if curr_line:
+            lines.append(" ".join(curr_line))
+
+        line_count = max(1, len(lines))
+        test_bbox = font.getbbox("Ay")
+        lh = (test_bbox[3] - test_bbox[1]) + 16
+        text_block_h = line_count * lh
+
+        banner_h = max(130, text_block_h + 60)
+        bx1 = (target_w - bw) // 2
+        by1 = by
+        bx2 = bx1 + bw
+        by2 = by1 + banner_h
+        corner_radius = 34
+
+        # 2. Render Gradient into a separate RGBA patch
+        grad_patch = Image.new("RGBA", (bw, banner_h), (0, 0, 0, 0))
+        c_start = (155, 28, 236)
+        c_mid = (230, 0, 120)
+        c_end = (255, 122, 0)
+
+        grad_pixels = grad_patch.load()
+        for x in range(bw):
+            t = x / float(bw - 1) if bw > 1 else 0.5
+            if t < 0.5:
+                ratio = t / 0.5
+                r = int(c_start[0] + (c_mid[0] - c_start[0]) * ratio)
+                g = int(c_start[1] + (c_mid[1] - c_start[1]) * ratio)
+                b = int(c_start[2] + (c_mid[2] - c_start[2]) * ratio)
+            else:
+                ratio = (t - 0.5) / 0.5
+                r = int(c_mid[0] + (c_end[0] - c_mid[0]) * ratio)
+                g = int(c_mid[1] + (c_end[1] - c_mid[1]) * ratio)
+                b = int(c_mid[2] + (c_end[2] - c_mid[2]) * ratio)
+            for y in range(banner_h):
+                grad_pixels[x, y] = (r, g, b, 255)
+
+        mask = Image.new("L", (bw, banner_h), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.rounded_rectangle([0, 0, bw, banner_h], radius=corner_radius, fill=255)
+        grad_patch.putalpha(mask)
+
+        border_draw = ImageDraw.Draw(grad_patch)
+        border_draw.rounded_rectangle([0, 0, bw - 1, banner_h - 1], radius=corner_radius, outline=(255, 255, 255, 130), width=2)
+        canvas.paste(grad_patch, (bx1, by1), grad_patch)
+
+        # 3. Draw text with drop shadow inside banner
+        draw = ImageDraw.Draw(canvas)
+        start_ty = by1 + (banner_h - text_block_h) // 2
+        for i, line in enumerate(lines):
+            line_bbox = font.getbbox(line)
+            lw = line_bbox[2] - line_bbox[0]
+            tx = (target_w - lw) // 2
+            ty = start_ty + i * lh
+            draw.text((tx + 2, ty + 3), line, font=font, fill=(0, 0, 0, 185))
+            draw.text((tx, ty), line, font=font, fill=(255, 255, 255, 255))
+
+        # 4. Mascot Icon sitting centered above banner top-border
+        if show_mascot:
+            for cand in [
+                "assets/logo witoutbg.png", "assets/logo.png",
+                "frontend/public/mascot_logo.png", "backend/frontend_dist/mascot_logo.png"
+            ]:
+                if os.path.exists(cand):
+                    try:
+                        mascot_img = Image.open(cand).convert("RGBA")
+                        mw = 74
+                        mh = int(mascot_img.height * (mw / mascot_img.width))
+                        mascot_img = mascot_img.resize((mw, mh), Image.Resampling.LANCZOS)
+                        mx = (target_w - mw) // 2
+                        my = by1 - (mh // 2) + 6
+                        canvas.paste(mascot_img, (mx, my), mascot_img)
+                        break
+                    except Exception:
+                        pass
+
+        # 5. Top Right Badge Pill: Auto Clipped by PicClip
+        if show_badge and badge_text:
+            badge_clean = badge_text.strip()
+            bb = badge_font.getbbox(badge_clean)
+            bw_badge = (bb[2] - bb[0]) + 44
+            bh_badge = 38
+            badge_x2 = bx2 - 16
+            badge_x1 = badge_x2 - bw_badge
+            badge_y1 = by1 - 18
+
+            badge_patch = Image.new("RGBA", (bw_badge, bh_badge), (0, 0, 0, 0))
+            b_draw = ImageDraw.Draw(badge_patch)
+            b_draw.rounded_rectangle([0, 0, bw_badge, bh_badge], radius=19, fill=(24, 24, 32, 235), outline=(255, 255, 255, 100), width=1)
+
+            dot_r = 4
+            b_draw.ellipse([14, (bh_badge // 2) - dot_r, 14 + dot_r * 2, (bh_badge // 2) + dot_r], fill=(234, 179, 8, 255))
+
+            btx = 28
+            bty = (bh_badge - (bb[3] - bb[1])) // 2 - 2
+            b_draw.text((btx, bty), badge_clean, font=badge_font, fill=(245, 245, 250, 245))
+            canvas.paste(badge_patch, (badge_x1, badge_y1), badge_patch)
+
+        return canvas
+
+    @classmethod
     def render(
         cls,
         input_path: str,
@@ -1054,8 +1242,8 @@ class MasterCompositor:
 
             filter_complex = (
                 f"[0:v]split=2[bg_in][fg_in]; "
-                f"[bg_in]scale={target_w}:{target_h}:flags=lanczos,boxblur=25:5[bg]; "
-                f"[fg_in]scale={new_w}:{new_h}:flags=lanczos[fg]; "
+                f"[bg_in]scale={target_w}:{target_h}:flags=lanczos+accurate_rnd,boxblur=25:5[bg]; "
+                f"[fg_in]scale={new_w}:{new_h}:flags=lanczos+accurate_rnd[fg]; "
                 f"[bg][fg]overlay={x_off}:{y_off}[{base_stream}]"
             )
 
@@ -1082,8 +1270,8 @@ class MasterCompositor:
 
             filter_complex = (
                 f"[0:v]split=2[sc_in][sp_in]; "
-                f"[sc_in]crop={top_crop_w}:{top_crop_h}:0:{top_y},scale={target_w}:{screen_h}:flags=lanczos,setsar=1[sc]; "
-                f"[sp_in]crop={bot_crop_w}:{src_h}:{bot_x}:0,scale={target_w}:{speaker_h}:flags=lanczos,setsar=1[sp]; "
+                f"[sc_in]crop={top_crop_w}:{top_crop_h}:0:{top_y},scale={target_w}:{screen_h}:flags=lanczos+accurate_rnd,setsar=1[sc]; "
+                f"[sp_in]crop={bot_crop_w}:{src_h}:{bot_x}:0,scale={target_w}:{speaker_h}:flags=lanczos+accurate_rnd,setsar=1[sp]; "
                 f"[sc][sp]vstack=inputs=2,drawbox=y={screen_h-2}:color=0x8b5cf6@0.85:width=iw:height=3:t=fill[{base_stream}]"
             )
 
@@ -1093,8 +1281,8 @@ class MasterCompositor:
             half_w = (src_w // 2 // 2) * 2
             filter_complex = (
                 f"[0:v]split=2[top_in][bot_in]; "
-                f"[top_in]crop={half_w}:{src_h}:0:0,scale={target_w}:{half_h}:flags=lanczos,setsar=1[top_v]; "
-                f"[bot_in]crop={half_w}:{src_h}:{half_w}:0,scale={target_w}:{half_h}:flags=lanczos,setsar=1[bot_v]; "
+                f"[top_in]crop={half_w}:{src_h}:0:0,scale={target_w}:{half_h}:flags=lanczos+accurate_rnd,setsar=1[top_v]; "
+                f"[bot_in]crop={half_w}:{src_h}:{half_w}:0,scale={target_w}:{half_h}:flags=lanczos+accurate_rnd,setsar=1[bot_v]; "
                 f"[top_v][bot_v]vstack=inputs=2,drawbox=y={half_h-2}:color=0x8b5cf6@0.85:width=iw:height=3:t=fill[{base_stream}]"
             )
 
@@ -1134,12 +1322,12 @@ class MasterCompositor:
                 if fx1 % 2 != 0: fx1 -= 1
                 if fy1 % 2 != 0: fy1 -= 1
 
-                sharp_str = ",unsharp=5:5:0.6:5:5:0.0" if unsharp_sharpening else ""
+                sharp_str = ",unsharp=5:5:0.7:5:5:0.2" if unsharp_sharpening else ""
 
                 filter_complex = (
                     f"[0:v]split=2[fc_in][gp_in]; "
-                    f"[fc_in]crop={fc_w}:{fc_h}:{fx1}:{fy1},scale={target_w}:{facecam_h}:flags=lanczos{sharp_str},setsar=1[fc]; "
-                    f"[gp_in]crop={gp_crop_w}:{src_h}:{gp_x1}:0,scale={target_w}:{gameplay_h}:flags=lanczos{sharp_str},setsar=1[gp]; "
+                    f"[fc_in]crop={fc_w}:{fc_h}:{fx1}:{fy1},scale={target_w}:{facecam_h}:flags=lanczos+accurate_rnd{sharp_str},setsar=1[fc]; "
+                    f"[gp_in]crop={gp_crop_w}:{src_h}:{gp_x1}:0,scale={target_w}:{gameplay_h}:flags=lanczos+accurate_rnd{sharp_str},setsar=1[gp]; "
                     f"[fc][gp]vstack=inputs=2,drawbox=y={facecam_h-2}:color=0x8b5cf6@0.85:width=iw:height=3:t=fill[{base_stream}]"
                 )
 
@@ -1159,9 +1347,9 @@ class MasterCompositor:
             crop_x = int(max(0, min(focal_x - (crop_w / 2.0), src_w - crop_w)))
             crop_x = (crop_x // 2) * 2
 
-            sharp_str = ",unsharp=5:5:0.5:5:5:0.0" if unsharp_sharpening else ""
+            sharp_str = ",unsharp=5:5:0.7:5:5:0.2" if unsharp_sharpening else ""
             filter_complex = (
-                f"[0:v]crop={crop_w}:{crop_h}:{crop_x}:0,scale={target_w}:{target_h}:flags=lanczos{sharp_str},setsar=1[{base_stream}]"
+                f"[0:v]crop={crop_w}:{crop_h}:{crop_x}:0,scale={target_w}:{target_h}:flags=lanczos+accurate_rnd{sharp_str},setsar=1[{base_stream}]"
             )
 
         # 5. Default / Fill (Auto-Reframe) & Action Crop:
@@ -1207,23 +1395,30 @@ class MasterCompositor:
                 crop_x = 0
                 crop_y = 0
 
-            sharp_str = ",unsharp=5:5:0.6:5:5:0.0" if unsharp_sharpening else ""
-            filter_complex = f"[0:v]crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_w}:{target_h}:flags=lanczos{sharp_str},setsar=1[{base_stream}]"
+            sharp_str = ",unsharp=5:5:0.7:5:5:0.2" if unsharp_sharpening else ""
+            filter_complex = f"[0:v]crop={crop_w}:{crop_h}:{crop_x}:{crop_y},scale={target_w}:{target_h}:flags=lanczos+accurate_rnd{sharp_str},setsar=1[{base_stream}]"
 
         cap.release()
 
-        # Apply Hook Banner, Watermark, Subtitles, Progress Bar & Smooth Transitions
+        # Generate modern high-CTR gradient hook title banner overlay if requested
+        temp_hook_png = None
+        if hook_banner and hook_banner.strip():
+            temp_hook_png = os.path.join(work_dir, f"_hb_{uuid.uuid4().hex[:6]}.png")
+            try:
+                banner_img = cls.generate_hook_banner_overlay(
+                    text=hook_banner,
+                    target_w=target_w,
+                    target_h=target_h
+                )
+                banner_img.save(temp_hook_png)
+            except Exception as he:
+                print(f"[MasterCompositor] Warning: could not generate hook banner overlay: {he}")
+                temp_hook_png = None
+
+        # Apply Watermark, Subtitles, Progress Bar & Smooth Transitions
         filters_after = []
 
-        # 1. High-CTR Top Hook Banner Box & Title (PIC-CLIP Studio style)
-        if hook_banner and hook_banner.strip():
-            hb_clean = hook_banner.strip().replace('\\', '\\\\').replace("'", "'\\''").replace(':', '\\:').replace('%', '\\%')
-            hb_y = int(target_h * 0.05)
-            hb_text_y = hb_y + 20
-            filters_after.append(f"drawbox=x=60:y={hb_y}:w=iw-120:h=78:color=black@0.80:t=fill")
-            filters_after.append(f"drawtext=text='{hb_clean}':fontsize=32:fontcolor=0xFFD700:borderw=2:bordercolor=black:x=(w-tw)/2:y={hb_text_y}")
-
-        # 2. Creator Brand Kit Watermark / Handle
+        # 1. Creator Brand Kit Watermark / Handle
         if watermark_text and watermark_text.strip():
             wm_clean = watermark_text.strip().replace('\\', '\\\\').replace("'", "'\\''").replace(':', '\\:').replace('%', '\\%')
             wm_pos = "x=w-tw-40:y=40"
@@ -1240,24 +1435,29 @@ class MasterCompositor:
                 op = 0.85
             filters_after.append(f"drawtext=text='{wm_clean}':fontsize=32:fontcolor=white@{op:.2f}:borderw=2:bordercolor=black@{op:.2f}:{wm_pos}")
 
-        # 3. Dynamic Word-Level ASS Subtitles
+        # 2. Dynamic Word-Level ASS Subtitles
         if ass_filename:
             filters_after.append(f"ass={ass_filename}")
 
-        # 4. Animated Progress Bar (Reels / TikTok completion indicator)
+        # 3. Animated Progress Bar (Reels / TikTok completion indicator)
         if progress_bar and duration > 0.5:
             filters_after.append(f"drawbox=x=0:y=ih-8:w='iw*(t/{duration:.3f})':h=8:color=0x8b5cf6:t=fill")
 
-        # 5. Smooth In/Out Video Transitions
+        # 4. Smooth In/Out Video Transitions
         if smooth_transitions and duration > 1.5:
             fade_out_st = max(0.5, duration - 0.25)
             filters_after.append("fade=t=in:st=0:d=0.25")
             filters_after.append(f"fade=t=out:st={fade_out_st:.2f}:d=0.25")
 
+        curr_stream = base_stream
+        if temp_hook_png:
+            filter_complex += f"; [{curr_stream}][1:v]overlay=0:0[hb_v]"
+            curr_stream = "hb_v"
+
         if filters_after:
-            filter_complex += f"; [{base_stream}]{','.join(filters_after)}[outv]"
+            filter_complex += f"; [{curr_stream}]{','.join(filters_after)}[outv]"
         else:
-            filter_complex += f"; [{base_stream}]null[outv]"
+            filter_complex += f"; [{curr_stream}]null[outv]"
 
         # Audio Normalization & Studio Acoustic De-noise
         if audio_denoise:
@@ -1274,29 +1474,48 @@ class MasterCompositor:
             "-ss", str(start_time),
             "-t", str(duration),
             "-i", input_rel,
+        ]
+        if temp_hook_png:
+            cmd.extend(["-i", os.path.basename(temp_hook_png)])
+
+        cmd.extend([
             "-filter_complex", filter_complex,
             "-map", "[outv]",
             "-map", "0:a?",
             "-af", audio_filter,
             "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "15",
+            "-preset", "medium",
+            "-crf", "14",
+            "-profile:v", "high",
+            "-level", "4.2",
+            "-maxrate", "16M",
+            "-bufsize", "32M",
+            "-colorspace", "bt709",
+            "-color_primaries", "bt709",
+            "-color_trc", "bt709",
+            "-color_range", "tv",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
-            "-b:a", "320k"
-        ]
+            "-b:a", "320k",
+            "-ar", "48000"
+        ])
         if target_fps == 60:
             cmd.extend(["-r", "60"])
         cmd.append(os.path.abspath(output_path))
 
-        res = subprocess.run(cmd, cwd=work_dir, capture_output=True)
-        if res.returncode != 0:
-            err_msg = res.stderr.decode('utf-8', errors='ignore') if res.stderr else "FFmpeg error"
-            raise RuntimeError(f"FFmpeg encoding error: {err_msg}")
-
-        if ass_path and os.path.exists(ass_path):
-            try: os.remove(ass_path)
-            except Exception: pass
+        try:
+            res = subprocess.run(cmd, cwd=work_dir, capture_output=True)
+            if res.returncode != 0:
+                err_msg = res.stderr.decode('utf-8', errors='ignore') if res.stderr else "FFmpeg error"
+                raise RuntimeError(f"FFmpeg encoding error: {err_msg}")
+            return output_path
+        finally:
+            if temp_hook_png and os.path.exists(temp_hook_png):
+                try: os.remove(temp_hook_png)
+                except Exception: pass
+            if ass_path and os.path.exists(ass_path):
+                try: os.remove(ass_path)
+                except Exception: pass
 
         return output_path
 
@@ -1350,7 +1569,7 @@ class MasterCompositor:
         if text_banner and text_banner.strip():
             tb_text = text_banner.strip()
             if text_position == "top_hook":
-                by1 = int(h * 0.07)
+                by1 = int(h * 0.08)
             elif text_position == "upper_third":
                 by1 = int(h * 0.22)
             elif text_position == "lower_third":
@@ -1359,30 +1578,39 @@ class MasterCompositor:
                 by1 = int(h * 0.84)
             by2 = by1 + 104
 
-            theme_map = {
-                "fire": {"fill": (225, 29, 72, 235), "outline": (255, 120, 120, 255), "text": (255, 255, 255, 255)},
-                "neon": {"fill": (6, 182, 212, 235), "outline": (220, 255, 255, 255), "text": (10, 15, 25, 255)},
-                "gold": {"fill": (245, 158, 11, 235), "outline": (254, 240, 138, 255), "text": (20, 15, 5, 255)},
-                "yellow": {"fill": (234, 179, 8, 240), "outline": (0, 0, 0, 255), "text": (0, 0, 0, 255)},
-                "glass": {"fill": (15, 17, 23, 220), "outline": (168, 85, 247, 240), "text": (255, 255, 255, 255)},
-            }
-            colors = theme_map.get(text_theme, theme_map["glass"])
-            
-            banner_w = min(w - 120, max(420, len(tb_text) * 26 + 100))
-            bx1 = (w - banner_w) // 2
-            bx2 = bx1 + banner_w
+            if text_theme == "gradient" or text_position == "top_hook":
+                banner_canvas = cls.generate_hook_banner_overlay(
+                    text=tb_text,
+                    target_w=w,
+                    target_h=h,
+                    y_pos=by1
+                )
+                overlay.paste(banner_canvas, (0, 0), banner_canvas)
+            else:
+                theme_map = {
+                    "fire": {"fill": (225, 29, 72, 235), "outline": (255, 120, 120, 255), "text": (255, 255, 255, 255)},
+                    "neon": {"fill": (6, 182, 212, 235), "outline": (220, 255, 255, 255), "text": (10, 15, 25, 255)},
+                    "gold": {"fill": (245, 158, 11, 235), "outline": (254, 240, 138, 255), "text": (20, 15, 5, 255)},
+                    "yellow": {"fill": (234, 179, 8, 240), "outline": (0, 0, 0, 255), "text": (0, 0, 0, 255)},
+                    "glass": {"fill": (15, 17, 23, 220), "outline": (168, 85, 247, 240), "text": (255, 255, 255, 255)},
+                }
+                colors = theme_map.get(text_theme, theme_map["glass"])
+                
+                banner_w = min(w - 120, max(420, len(tb_text) * 26 + 100))
+                bx1 = (w - banner_w) // 2
+                bx2 = bx1 + banner_w
 
-            draw.rounded_rectangle([bx1, by1, bx2, by2], radius=24, fill=colors["fill"], outline=colors["outline"], width=3)
-            font = None
-            for font_name in ["segoeuib.ttf", "segoeui.ttf", "seguisym.ttf", "arial.ttf"]:
-                try:
-                    font = ImageFont.truetype(font_name, 40)
-                    break
-                except Exception:
-                    continue
-            if font is None:
-                font = ImageFont.load_default()
-            draw.text(((bx1 + bx2) // 2, (by1 + by2) // 2), tb_text, fill=colors["text"], anchor="mm", font=font)
+                draw.rounded_rectangle([bx1, by1, bx2, by2], radius=24, fill=colors["fill"], outline=colors["outline"], width=3)
+                font = None
+                for font_name in ["segoeuib.ttf", "segoeui.ttf", "seguisym.ttf", "arial.ttf"]:
+                    try:
+                        font = ImageFont.truetype(font_name, 40)
+                        break
+                    except Exception:
+                        continue
+                if font is None:
+                    font = ImageFont.load_default()
+                draw.text(((bx1 + bx2) // 2, (by1 + by2) // 2), tb_text, fill=colors["text"], anchor="mm", font=font)
 
         # 2. Sticker / Emoji Overlay
         if sticker_emoji and sticker_emoji.strip():
@@ -1501,24 +1729,33 @@ class MasterCompositor:
             "-map", "0:a?",
             "-af", af_str,
             "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "15",
+            "-preset", "medium",
+            "-crf", "14",
+            "-profile:v", "high",
+            "-level", "4.2",
+            "-maxrate", "16M",
+            "-bufsize", "32M",
+            "-colorspace", "bt709",
+            "-color_primaries", "bt709",
+            "-color_trc", "bt709",
+            "-color_range", "tv",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
             "-b:a", "320k",
+            "-ar", "48000",
             os.path.abspath(output_path)
         ])
 
-        res = subprocess.run(cmd, capture_output=True)
-        if temp_overlay and os.path.exists(temp_overlay):
-            try: os.remove(temp_overlay)
-            except Exception: pass
-
-        if res.returncode != 0:
-            err = res.stderr.decode("utf-8", errors="ignore") if res.stderr else "FFmpeg error"
-            raise RuntimeError(f"Custom elements rendering failed: {err}")
-
-        return output_path
+        try:
+            res = subprocess.run(cmd, capture_output=True)
+            if res.returncode != 0:
+                err = res.stderr.decode("utf-8", errors="ignore") if res.stderr else "FFmpeg error"
+                raise RuntimeError(f"Custom elements rendering failed: {err}")
+            return output_path
+        finally:
+            if temp_overlay and os.path.exists(temp_overlay):
+                try: os.remove(temp_overlay)
+                except Exception: pass
 
 
 # =====================================================================
