@@ -1073,7 +1073,7 @@ class MasterCompositor:
             top_y = (src_h - top_crop_h) // 2
             top_y = (top_y // 2) * 2
 
-            avg_cx, avg_cy = ActiveFramingEngine.detect_speaker_focus(input_path, start_time, end_time, src_w, src_h)
+            avg_cx, avg_cy, _ = ActiveFramingEngine.detect_speaker_focus(input_path, start_time, end_time, src_w, src_h)
             bot_crop_w = int(src_h * (target_w / speaker_h))
             if bot_crop_w > src_w: bot_crop_w = src_w
             bot_crop_w = (bot_crop_w // 2) * 2
