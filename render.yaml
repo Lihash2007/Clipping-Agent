@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: picclip-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8000

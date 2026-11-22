@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 
-# Only search local development venv site-packages when uncompiled
+# Cross-platform venv site-packages discovery (uncompiled dev only)
 if not getattr(sys, "frozen", False):
     for p in [
         os.path.join(BASE_DIR, "backend", "venv", "Lib", "site-packages"),
@@ -22,19 +22,36 @@ if not getattr(sys, "frozen", False):
         if os.path.exists(p):
             sys.path.insert(0, p)
 
+# Pre-import core ML modules for PyInstaller discovery
+try:
+    import whisper
+except ImportError:
+    pass
+try:
+    import faster_whisper
+    import ctranslate2
+except ImportError:
+    pass
+try:
+    import mediapipe
+except ImportError:
+    pass
+try:
+    import sentence_transformers
+except ImportError:
+    pass
+
 import time
 import socket
 import threading
 import urllib.request
 import uvicorn
 
+# Safe desktop window library import
 try:
     import webview
-except ImportError:
-    import subprocess
-    print("[*] Installing pywebview on first run...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "pywebview"], check=True)
-    import webview
+except Exception:
+    webview = None
 
 def find_available_port(default_port: int = 8000) -> int:
     """Finds an open localhost port."""
@@ -96,34 +113,60 @@ def main():
 
     print(f"[*] Launching Native Desktop Window: {target_url}")
 
-    # 3. Create native desktop window
-    window = webview.create_window(
-        title="PicClip Studio Pro - AI Clipping Suite",
-        url=target_url,
-        width=1400,
-        height=900,
-        min_size=(1080, 720),
-        background_color="#090D16",
-        text_select=True
-    )
+    # 3. Native desktop window with bulletproof fallback
+    launched_native = False
+    if webview is not None:
+        try:
+            webview.create_window(
+                title="PicClip Studio Pro - AI Clipping Suite",
+                url=target_url,
+                width=1400,
+                height=900,
+                min_size=(1080, 720),
+                background_color="#090D16",
+                text_select=True
+            )
+            if sys.platform == "win32":
+                try:
+                    webview.start(gui="edgechromium", debug=False)
+                    launched_native = True
+                except BaseException as e_edge:
+                    print(f"[*] EdgeChromium native view unavailable ({e_edge}), trying standard GUI...")
+                    try:
+                        webview.start(debug=False)
+                        launched_native = True
+                    except BaseException as e_std:
+                        print(f"[*] Standard native GUI failed ({e_std}), falling back to browser...")
+                        launched_native = False
+            else:
+                webview.start(debug=False)
+                launched_native = True
+        except BaseException as err:
+            print(f"[!] Native desktop window error: {err}. Falling back to default browser...")
+            launched_native = False
 
-    # Start PyWebView native window with automatic browser fallback
-    try:
-        if sys.platform == "win32":
-            webview.start(gui="edgechromium", debug=False)
-        else:
-            webview.start(debug=False)
-    except Exception as err:
-        print(f"[!] Native desktop window error: {err}. Falling back to default browser...")
+    # 4. If native window is unavailable or encountered any runtime/CLR exception, open in system browser
+    if not launched_native:
         import webbrowser
+        print(f"[*] Opening PicClip Studio in default browser: {target_url}")
         webbrowser.open(target_url)
         try:
             while True:
                 time.sleep(1)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             pass
 
     print("[*] PicClip Studio closed.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException as fatal_err:
+        import traceback
+        print(f"[!] Launcher exception: {traceback.format_exc()}")
+        try:
+            import webbrowser
+            webbrowser.open("http://127.0.0.1:8000")
+            time.sleep(2)
+        except Exception:
+            pass

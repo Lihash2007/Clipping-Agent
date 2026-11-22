@@ -260,7 +260,7 @@ def check_anti_clock_rollback(state: Dict[str, Any]) -> bool:
     return True
 
 
-def verify_gumroad_license(license_key: str, permalink: str = "picclip", product_id: Optional[str] = None) -> Dict[str, Any]:
+def verify_gumroad_license(license_key: str, permalink: str = "PicClip", product_id: Optional[str] = "9mB-Ix4rX7DNIvIzgfvRkQ==") -> Dict[str, Any]:
     """
     Validates license directly against Gumroad's API with seat counting.
     Locks the license to 1 device.

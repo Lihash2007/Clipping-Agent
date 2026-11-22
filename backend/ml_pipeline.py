@@ -33,7 +33,6 @@ ffmpeg_dir = os.path.dirname(FFMPEG_EXE)
 if ffmpeg_dir not in os.environ.get("PATH", ""):
     os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
-os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 _HUB_DIR = os.path.expanduser("~/.cache/huggingface/hub")
@@ -68,16 +67,37 @@ class AudioIntelligenceEngine:
     @classmethod
     def get_whisper(cls):
         if cls._whisper_model is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            local_weights = os.path.join(base_dir, "weights", "whisper_base.pt")
+            if not os.path.exists(local_weights):
+                alt = os.path.join(base_dir, "..", "weights", "whisper_base.pt")
+                if os.path.exists(alt):
+                    local_weights = alt
+
+            # 1. Try faster_whisper first (2-4x speedup on CPU)
             try:
                 from faster_whisper import WhisperModel
                 print("[AudioIntelligence] Initializing Faster-Whisper (int8) with Silero-VAD filter...")
                 cls._whisper_model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=4)
                 cls._whisper_model.is_faster = True
+                return cls._whisper_model
             except Exception as e:
-                print(f"[AudioIntelligence] Faster-whisper fallback ({e}), loading standard whisper...")
+                print(f"[AudioIntelligence] Faster-whisper fallback ({e}), attempting standard whisper...")
+
+            # 2. Fallback to standard OpenAI whisper with bundled weights
+            try:
                 import whisper
-                cls._whisper_model = whisper.load_model("base")
+                if os.path.exists(local_weights):
+                    print(f"[AudioIntelligence] Loading pre-bundled Whisper weights from {local_weights}...")
+                    cls._whisper_model = whisper.load_model(local_weights)
+                else:
+                    print("[AudioIntelligence] Loading Whisper base model...")
+                    cls._whisper_model = whisper.load_model("base")
                 cls._whisper_model.is_faster = False
+                return cls._whisper_model
+            except Exception as e2:
+                print(f"[AudioIntelligence] Standard whisper failed ({e2})")
+                raise RuntimeError(f"Speech recognition engine failed to load: {e2}")
         return cls._whisper_model
 
     @classmethod
@@ -360,6 +380,33 @@ class VisualSemanticMiner:
 # 3. ACTIVE FRAMING ENGINE (MediaPipe Facecam & Speaker Tracker with EMA)
 # =====================================================================
 
+def get_mediapipe_face_detector(model_selection: int = 0, min_detection_confidence: float = 0.35):
+    """
+    Safely initializes MediaPipe FaceDetection across Windows, macOS, and Linux.
+    Works across dynamic attribute differences (mp.solutions vs from mediapipe.python.solutions).
+    Returns None if MediaPipe cannot be initialized on the host platform.
+    """
+    try:
+        from mediapipe.python.solutions import face_detection
+        return face_detection.FaceDetection(
+            model_selection=model_selection,
+            min_detection_confidence=min_detection_confidence
+        )
+    except Exception:
+        pass
+
+    try:
+        import mediapipe as mp
+        if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_detection"):
+            return mp.solutions.face_detection.FaceDetection(
+                model_selection=model_selection,
+                min_detection_confidence=min_detection_confidence
+            )
+    except Exception:
+        pass
+
+    return None
+
 class ActiveFramingEngine:
     """
     Industry-Grade Video Preprocessing & Spatial Layout Evaluation Engine.
@@ -396,9 +443,8 @@ class ActiveFramingEngine:
             'mid_right': (0.68, 0.25, 1.0, 0.78),
         }
 
-        import mediapipe as mp
-        mp_face = mp.solutions.face_detection
-        det = mp_face.FaceDetection(model_selection=0, min_detection_confidence=0.35)
+        det = get_mediapipe_face_detector(model_selection=0, min_detection_confidence=0.35)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
         sample_times = np.linspace(min(4.0, dur * 0.05), max(dur - 4.0, dur * 0.95), 20)
         tile_hits = {k: [] for k in tiles}
@@ -410,21 +456,48 @@ class ActiveFramingEngine:
 
             for name, (rx1, ry1, rx2, ry2) in tiles.items():
                 crop = frame[int(ry1 * h) : int(ry2 * h), int(rx1 * w) : int(rx2 * w)]
-                rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-                res = det.process(rgb)
-                if res.detections:
-                    for d in res.detections:
-                        bb = d.location_data.relative_bounding_box
-                        # Map back to full frame normalized coordinates
-                        gw = bb.width * (rx2 - rx1)
-                        gh = bb.height * (ry2 - ry1)
-                        gx = rx1 + bb.xmin * (rx2 - rx1)
-                        gy = ry1 + bb.ymin * (ry2 - ry1)
-                        tile_hits[name].append((gx, gy, gw, gh, d.score[0]))
-                        break
+                detected = False
+
+                if det is not None:
+                    try:
+                        rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                        res = det.process(rgb)
+                        if res and res.detections:
+                            for d in res.detections:
+                                bb = d.location_data.relative_bounding_box
+                                # Map back to full frame normalized coordinates
+                                gw = bb.width * (rx2 - rx1)
+                                gh = bb.height * (ry2 - ry1)
+                                gx = rx1 + bb.xmin * (rx2 - rx1)
+                                gy = ry1 + bb.ymin * (ry2 - ry1)
+                                tile_hits[name].append((gx, gy, gw, gh, d.score[0]))
+                                detected = True
+                                break
+                    except Exception:
+                        pass
+
+                if not detected and face_cascade is not None and not face_cascade.empty():
+                    try:
+                        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+                        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+                        if len(faces) > 0:
+                            fx, fy, fw, fh = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+                            cw = (rx2 - rx1)
+                            ch = (ry2 - ry1)
+                            gw = (fw / max(1, crop.shape[1])) * cw
+                            gh = (fh / max(1, crop.shape[0])) * ch
+                            gx = rx1 + (fx / max(1, crop.shape[1])) * cw
+                            gy = ry1 + (fy / max(1, crop.shape[0])) * ch
+                            tile_hits[name].append((gx, gy, gw, gh, 0.85))
+                    except Exception:
+                        pass
 
         cap.release()
-        det.close()
+        if det is not None:
+            try:
+                det.close()
+            except Exception:
+                pass
 
         # Evaluation criteria:
         # 1. Persistence rate >= 15% (allows for streams with periodic facecam visibility)
@@ -511,9 +584,7 @@ class ActiveFramingEngine:
         Dynamic Speaker Tracking using MediaPipe with OpenCV Haar Cascade fallback.
         Returns (center_x, center_y, face_detected: bool).
         """
-        import mediapipe as mp
-        mp_face = mp.solutions.face_detection
-        det = mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.30)
+        det = get_mediapipe_face_detector(model_selection=1, min_detection_confidence=0.30)
 
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -530,29 +601,44 @@ class ActiveFramingEngine:
         while cap.isOpened() and len(centers) < max_samples:
             ret, frame = cap.read()
             if not ret: break
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            res = det.process(rgb)
-            if res.detections:
-                best = max(res.detections, key=lambda d: d.location_data.relative_bounding_box.width * d.location_data.relative_bounding_box.height)
-                bb = best.location_data.relative_bounding_box
-                cx = (bb.xmin + bb.width / 2.0) * src_w
-                cy = (bb.ymin + bb.height * 0.45) * src_h
-                centers.append((cx, cy))
-            else:
-                # Fallback to OpenCV Haar Cascade
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(40, 40))
-                if len(faces) > 0:
-                    faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
-                    fx, fy, fw, fh = faces[0]
-                    centers.append((fx + fw / 2.0, fy + fh * 0.45))
+
+            detected = False
+            if det is not None:
+                try:
+                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    res = det.process(rgb)
+                    if res and res.detections:
+                        best = max(res.detections, key=lambda d: d.location_data.relative_bounding_box.width * d.location_data.relative_bounding_box.height)
+                        bb = best.location_data.relative_bounding_box
+                        cx = (bb.xmin + bb.width / 2.0) * src_w
+                        cy = (bb.ymin + bb.height * 0.45) * src_h
+                        centers.append((cx, cy))
+                        detected = True
+                except Exception:
+                    pass
+
+            if not detected and face_cascade is not None and not face_cascade.empty():
+                try:
+                    # Fallback to OpenCV Haar Cascade
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(40, 40))
+                    if len(faces) > 0:
+                        faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+                        fx, fy, fw, fh = faces[0]
+                        centers.append((fx + fw / 2.0, fy + fh * 0.45))
+                except Exception:
+                    pass
 
             f_count += 1
             for _ in range(sample_interval - 1):
                 cap.grab()
 
         cap.release()
-        det.close()
+        if det is not None:
+            try:
+                det.close()
+            except Exception:
+                pass
 
         if centers:
             med_cx = float(np.median([c[0] for c in centers]))
@@ -568,9 +654,8 @@ class ActiveFramingEngine:
         Returns True if a dual-speaker / interview setup is validated.
         """
         try:
-            import mediapipe as mp
-            mp_face = mp.solutions.face_detection
-            det = mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.30)
+            det = get_mediapipe_face_detector(model_selection=1, min_detection_confidence=0.30)
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
             cap = cv2.VideoCapture(video_path)
             fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -585,19 +670,43 @@ class ActiveFramingEngine:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
                 ret, frame = cap.read()
                 if not ret: break
-                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                res = det.process(rgb)
-                if res.detections:
-                    for d in res.detections:
-                        bb = d.location_data.relative_bounding_box
-                        cx = bb.xmin + (bb.width / 2.0)
-                        if cx < 0.45:
-                            left_hits += 1
-                        elif cx > 0.55:
-                            right_hits += 1
+
+                detected = False
+                if det is not None:
+                    try:
+                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        res = det.process(rgb)
+                        if res and res.detections:
+                            for d in res.detections:
+                                bb = d.location_data.relative_bounding_box
+                                cx = bb.xmin + (bb.width / 2.0)
+                                if cx < 0.45:
+                                    left_hits += 1
+                                elif cx > 0.55:
+                                    right_hits += 1
+                            detected = True
+                    except Exception:
+                        pass
+
+                if not detected and face_cascade is not None and not face_cascade.empty():
+                    try:
+                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(40, 40))
+                        for fx, fy, fw, fh in faces:
+                            cx = (fx + fw / 2.0) / frame.shape[1]
+                            if cx < 0.45:
+                                left_hits += 1
+                            elif cx > 0.55:
+                                right_hits += 1
+                    except Exception:
+                        pass
 
             cap.release()
-            det.close()
+            if det is not None:
+                try:
+                    det.close()
+                except Exception:
+                    pass
 
             threshold = max(2, int(max_samples * 0.20))
             is_dual = bool(left_hits >= threshold and right_hits >= threshold)

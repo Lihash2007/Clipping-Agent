@@ -20,6 +20,31 @@ def run_step(desc: str, cmd: str, cwd: str = BASE_DIR):
         sys.exit(res.returncode)
     print(f"[+] {desc} complete.")
 
+def prepare_clean_backend(staging_dir: str):
+    """Prepares a clean copy of backend without venv, uploads, outputs, or pycache."""
+    if os.path.exists(staging_dir):
+        shutil.rmtree(staging_dir, ignore_errors=True)
+    os.makedirs(staging_dir, exist_ok=True)
+
+    src_backend = os.path.join(BASE_DIR, "backend")
+    for item in os.listdir(src_backend):
+        s_path = os.path.join(src_backend, item)
+        d_path = os.path.join(staging_dir, item)
+
+        if item in ["venv", "uploads", "output", "outputs", "__pycache__"]:
+            continue
+
+        if os.path.isdir(s_path):
+            shutil.copytree(s_path, d_path)
+        else:
+            shutil.copy2(s_path, d_path)
+
+    for sub in ["uploads", "output"]:
+        sub_path = os.path.join(staging_dir, sub)
+        os.makedirs(sub_path, exist_ok=True)
+        with open(os.path.join(sub_path, ".gitkeep"), "w") as f:
+            pass
+
 def main():
     print("=" * 60)
     print("  PicClip Studio Pro - macOS Native Packaging Pipeline")
@@ -44,7 +69,12 @@ def main():
             run_step("Compiling Next.js UI", "npm run build", cwd=os.path.join(BASE_DIR, "frontend"))
             shutil.copytree(frontend_out, backend_dist)
 
-    # 2. PyInstaller macOS Packaging Command
+    # 2. Prepare clean backend staging folder (NO venv)
+    backend_clean = os.path.join(BASE_DIR, "backend_clean_mac")
+    print("[*] Preparing clean backend distribution for macOS...")
+    prepare_clean_backend(backend_clean)
+
+    # 3. PyInstaller macOS Packaging Command
     icon_param = ""
     icns_path = os.path.join(BASE_DIR, "assets", "logo.icns")
     if os.path.exists(icns_path):
@@ -58,18 +88,26 @@ def main():
         '--onedir '
         '--osx-bundle-identifier "com.picclip.studio" '
         f'{icon_param} '
-        '--add-data "backend:backend" '
+        f'--add-data "{backend_clean}:backend" '
         '--add-data "assets:assets" '
+        '--collect-all "whisper" '
+        '--collect-all "faster_whisper" '
+        '--collect-all "ctranslate2" '
+        '--collect-all "mediapipe" '
         '--hidden-import "uvicorn" '
         '--hidden-import "fastapi" '
         '--hidden-import "webview" '
         '--hidden-import "licensing" '
         '--hidden-import "torch" '
-        '--hidden-import "ffmpeg" '
+        '--hidden-import "scipy.signal" '
         'desktop_launcher.py'
     )
 
-    run_step("Compiling macOS .app Bundle with PyInstaller", py_cmd)
+    try:
+        run_step("Compiling macOS .app Bundle with PyInstaller", py_cmd)
+    finally:
+        if os.path.exists(backend_clean):
+            shutil.rmtree(backend_clean, ignore_errors=True)
 
     dist_dir = os.path.join(BASE_DIR, "dist")
     app_path = os.path.join(dist_dir, "PicClipStudio.app")

@@ -3,8 +3,12 @@
 # PicClip Studio Pro - 1-Click Native macOS Launcher (Apple Silicon & Intel)
 # ==============================================================================
 
+# Force standard macOS system PATH so basic utilities (dirname, uname, clear) always work
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:$PATH"
+
 # Ensure script runs from its own directory on macOS
-cd "$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # ANSI Terminal Colors
 BOLD='\033[1m'

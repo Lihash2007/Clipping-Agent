@@ -18,16 +18,28 @@ HOW TO RUN:
    - Simply double-click "PicClip.command" — it will launch instantly!
 
 ----------------------------------------------------------------
-FIRST-TIME MACOS PERMISSION NOTE:
+IF macOS SHOWS "APPROPRIATE ACCESS PRIVILEGES" OR "UNIDENTIFIED DEVELOPER":
 ----------------------------------------------------------------
-If macOS shows: "PicClip.command cannot be opened because it is from an unidentified developer":
-1. Right-click (or hold Control and click) "PicClip.command".
-2. Select "Open".
-3. Click "Open" on the confirmation dialog.
-(You only have to do this once).
+When downloading scripts from the internet, macOS security blocks execution
+until you grant permission.
 
-Alternatively, open Terminal in this folder and run:
-chmod +x PicClip.command
+OPTION 1 (Quickest - 5 seconds):
+1. Open Terminal (Press Cmd + Space, type Terminal, hit Enter).
+2. Type:
+   chmod +x 
+   (include the space after +x).
+3. Drag & drop the "PicClip.command" file from Finder directly into Terminal.
+4. Press Enter.
+Now double-click "PicClip.command" — it will open immediately!
+
+OPTION 2 (Direct Run via Terminal):
+Open Terminal, navigate to this folder, and run:
+   bash PicClip.command
+
+OPTION 3 (If Gatekeeper blocks "unidentified developer"):
+1. Right-click (or Control + Click) "PicClip.command".
+2. Click "Open".
+3. Click "Open" on the confirmation prompt.
 
 Enjoy creating viral 9:16 Shorts & Reels with PicClip Studio!
 Instagram: @piclers

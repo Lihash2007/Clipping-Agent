@@ -45,13 +45,102 @@ def main():
             
             zinfo = zipfile.ZipInfo(arc_path)
             zinfo.date_time = (2026, 11, 21, 12, 0, 0)
+            zinfo.create_system = 3  # 3 = UNIX system (required for macOS to recognize permissions)
             if is_executable:
-                # Unix permissions: rwxr-xr-x (0o755)
-                zinfo.external_attr = 0o755 << 16
+                # Unix permissions: S_IFREG | rwxr-xr-x (0o100755)
+                zinfo.external_attr = 0o100755 << 16
             else:
-                # Unix permissions: rw-r--r-- (0o644)
-                zinfo.external_attr = 0o644 << 16
+                # Unix permissions: S_IFREG | rw-r--r-- (0o100644)
+                zinfo.external_attr = 0o100644 << 16
             zf.writestr(zinfo, data)
+
+        # Bundle native PicClip Studio.app
+        app_prefix = "PicClipStudio-Mac/PicClip Studio.app/Contents"
+        
+        # Info.plist
+        plist_content = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>PicClipStudio</string>
+    <key>CFBundleIconFile</key>
+    <string>logo.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.picclip.studio</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>PicClip Studio</string>
+    <key>CFBundleDisplayName</key>
+    <string>PicClip Studio Pro</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>2.0.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>"""
+        z_plist = zipfile.ZipInfo(f"{app_prefix}/Info.plist")
+        z_plist.create_system = 3
+        z_plist.external_attr = 0o100644 << 16
+        zf.writestr(z_plist, plist_content.encode("utf-8"))
+
+        # PkgInfo
+        z_pkg = zipfile.ZipInfo(f"{app_prefix}/PkgInfo")
+        z_pkg.create_system = 3
+        z_pkg.external_attr = 0o100644 << 16
+        zf.writestr(z_pkg, b"APPL????")
+
+        # logo.icns
+        icns_path = os.path.join(BASE_DIR, "assets", "logo.icns")
+        if os.path.exists(icns_path):
+            with open(icns_path, "rb") as f:
+                icns_bytes = f.read()
+            z_icns = zipfile.ZipInfo(f"{app_prefix}/Resources/logo.icns")
+            z_icns.create_system = 3
+            z_icns.external_attr = 0o100644 << 16
+            zf.writestr(z_icns, icns_bytes)
+
+        # Native MacOS executable launcher
+        launcher_script = """#!/usr/bin/env bash
+# PicClip Studio Pro - macOS Native App Launcher
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:$PATH"
+
+APP_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$APP_ROOT"
+
+if command -v python3 &>/dev/null; then
+    PY_BIN="python3"
+elif command -v /usr/bin/python3 &>/dev/null; then
+    PY_BIN="/usr/bin/python3"
+else
+    osascript -e 'display alert "PicClip Studio" message "Python 3 is required. Please install Xcode Command Line Tools or Python."'
+    exit 1
+fi
+
+VENV_DIR="backend/venv"
+if [ ! -d "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/python" ]; then
+    osascript -e 'display notification "Setting up local AI engine (first run only)..." with title "PicClip Studio Pro"'
+    $PY_BIN -m venv "$VENV_DIR"
+    "$VENV_DIR/bin/pip" install --upgrade pip --quiet
+    "$VENV_DIR/bin/pip" install -r backend/requirements.txt --quiet
+    "$VENV_DIR/bin/pip" install pywebview --quiet
+fi
+
+exec "$VENV_DIR/bin/python" desktop_launcher.py
+"""
+        z_exec = zipfile.ZipInfo(f"{app_prefix}/MacOS/PicClipStudio")
+        z_exec.create_system = 3
+        z_exec.external_attr = 0o100755 << 16
+        zf.writestr(z_exec, launcher_script.replace("\r\n", "\n").encode("utf-8"))
 
         # Root files
         add_file(os.path.join(BASE_DIR, "PicClip.command"), "PicClipStudio-Mac/PicClip.command", is_executable=True)
@@ -82,11 +171,13 @@ def main():
         # Add empty uploads and output folders
         empty_keep = b""
         z_up = zipfile.ZipInfo("PicClipStudio-Mac/backend/uploads/.gitkeep")
-        z_up.external_attr = 0o644 << 16
+        z_up.create_system = 3
+        z_up.external_attr = 0o100644 << 16
         zf.writestr(z_up, empty_keep)
 
         z_out = zipfile.ZipInfo("PicClipStudio-Mac/backend/output/.gitkeep")
-        z_out.external_attr = 0o644 << 16
+        z_out.create_system = 3
+        z_out.external_attr = 0o100644 << 16
         zf.writestr(z_out, empty_keep)
 
     size_mb = os.path.getsize(ZIP_OUTPUT) / (1024 * 1024)

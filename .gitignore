@@ -29,6 +29,8 @@ backend/uploads/*
 backend/output/*
 !backend/output/.gitkeep
 backend/custom_model/weights/*.pth
+backend/weights/*.pt
+create_hotfix_patch.py
 backend/license_state.json
 dist/
 build/

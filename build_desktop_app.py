@@ -87,10 +87,26 @@ def main():
         '--icon "assets/logo.png" '
         f'--add-data "{backend_clean};backend" '
         '--add-data "assets;assets" '
+        '--collect-all "whisper" '
+        '--collect-all "faster_whisper" '
+        '--collect-all "ctranslate2" '
+        '--collect-all "mediapipe" '
+        '--collect-all "clr_loader" '
+        '--collect-all "pythonnet" '
+        '--collect-all "webview" '
         '--hidden-import "uvicorn" '
         '--hidden-import "fastapi" '
         '--hidden-import "webview" '
+        '--hidden-import "clr_loader" '
+        '--hidden-import "pythonnet" '
         '--hidden-import "licensing" '
+        '--hidden-import "whisper" '
+        '--hidden-import "faster_whisper" '
+        '--hidden-import "ctranslate2" '
+        '--hidden-import "mediapipe" '
+        '--hidden-import "sentence_transformers" '
+        '--hidden-import "torch" '
+        '--hidden-import "scipy.signal" '
         'desktop_launcher.py'
     )
 
@@ -102,11 +118,57 @@ def main():
             shutil.rmtree(backend_clean, ignore_errors=True)
 
     dist_dir = os.path.join(BASE_DIR, "dist")
+    app_folder = os.path.join(dist_dir, "PicClipStudio")
     print("\n" + "=" * 60)
     print("  Packaging Succeeded!")
-    print(f"  Distribution folder created at: {os.path.join(dist_dir, 'PicClipStudio')}")
-    print("  Run PicClipStudio.exe to launch the standalone desktop app.")
+    print(f"  Distribution folder created at: {app_folder}")
     print("=" * 60)
+
+    # 4.5 Add Launch Helper & How-To Guide to Distribution
+    bat_content = """@echo off
+setlocal
+cd /d "%~dp0"
+title PicClip Studio Pro
+echo ============================================================
+echo   PicClip Studio Pro - Starting Local AI Engine...
+echo ============================================================
+echo Unblocking Windows permissions...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path .\\PicClipStudio.exe -ErrorAction SilentlyContinue; if (Test-Path .\\_internal) { Get-ChildItem -Path .\\_internal -Recurse | Unblock-File -ErrorAction SilentlyContinue }" 2>nul
+echo Launching PicClip Studio Pro...
+start "" "PicClipStudio.exe"
+"""
+    with open(os.path.join(app_folder, "Launch PicClip.bat"), "w", encoding="utf-8") as f:
+        f.write(bat_content)
+
+    readme_content = """======================================================================
+               PICCLIP STUDIO PRO - QUICK START GUIDE
+======================================================================
+
+HOW TO START:
+  Option 1 (Recommended - 1-Click Launch):
+  Double-click "Launch PicClip.bat"
+  This automatically unblocks permissions and starts the app instantly.
+
+  Option 2:
+  Double-click "PicClipStudio.exe"
+
+----------------------------------------------------------------------
+IF WINDOWS DEFENDER SMARTSCREEN APPEARS:
+----------------------------------------------------------------------
+When downloading software from the internet outside the Microsoft Store,
+Windows Defender SmartScreen may display:
+  "Windows protected your PC"
+
+To start PicClip:
+  1. Click "More info" (underlined link on the prompt)
+  2. Click the "Run anyway" button at the bottom
+
+This prompt only appears once on first launch.
+PicClip Studio is 100% private and runs completely offline on your device.
+======================================================================
+"""
+    with open(os.path.join(app_folder, "HOW_TO_RUN.txt"), "w", encoding="utf-8") as f:
+        f.write(readme_content)
 
     # 5. Compress into distributable zip archive
     print("\n[*] Compressing distribution into PicClipStudio-Windows.zip...")
