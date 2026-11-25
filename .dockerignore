@@ -1,0 +1,13 @@
+.git
+__pycache__
+*.pyc
+backend/venv
+frontend/node_modules
+frontend/.next
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/output/*
+!backend/output/.gitkeep
+dist
+dist_mac
+*.zip

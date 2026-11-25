@@ -45,6 +45,7 @@ assets/cut_checks/
 assets/raw_frames/
 assets/input_video.mp4
 assets/raw_audio.wav
+backend/bin/*.exe
 create_promo_video.py
 edit_youtube_video.py
 temp_yt_build/
